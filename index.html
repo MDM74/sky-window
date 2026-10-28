@@ -239,6 +239,7 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
     <summary>How the scores work</summary>
     <p><b>Coastal and ridge soaring</b> scores wind direction against each launch's flyable arc, wind strength against the site's soaring range, gust spread, rain and storm risk.</p>
     <p><b>Thermal and XC</b> scores (09:00–17:00) use usable lift height (lower of the boundary layer top and estimated cloudbase), the 850–700 hPa lapse rate, sunshine, wind at about 1,500 m, launch wind, and storm risk from CAPE and rain chance. "Top of lift" is shown in feet above sea level, capped where the site has a CTA ceiling.</p>
+    <p><b>Launch height:</b> for hill launches (200 m and higher) the score uses the forecast wind in the band from launch height to 300 m above it, built from each model's winds at several heights, rather than the 10 m ground wind, which describes the model's smoothed valley terrain. The hour table shows both. Gusts add the model's ground gust spread on top. Coastal launches use the 10 m wind. "Top of lift" is given above sea level and above launch.</p>
     <p><b>Model agreement</b> re-scores the launch wind using each model separately (ECMWF, GFS, ICON, UK Met Office). Low agreement means treat the day as uncertain, especially 4+ days out.</p>
     <p>Wind ranges per site are starting estimates for paragliders. Ask Claude to adjust any site's range, add a site, or change the launch arcs.</p>
   </details>
@@ -281,7 +282,12 @@ function rainF(pr,pp){ let f=1; if(pr>=.5) return 0; if(pr>=.2) f=.5; if(pp>=60)
 
 function hourCalc(site,i){
   const c=k=>site.c[k][i];
-  const ws=c("ws"),wd=c("wd"),wg=c("wg"),pr=c("pr")??0,pp=c("pp")??0,cape=c("cape")??0;
+  // hill launches: score the wind in the flying band above launch height; coastal sites use the 10 m wind
+  const ws10=c("ws"),wd10=c("wd"),wg10=c("wg");
+  const L = site.c.wsl && site.c.wsl[i]!=null && site.c.wdl[i]!=null;
+  const ws = L? site.c.wsl[i] : ws10, wd = L? site.c.wdl[i] : wd10;
+  const wg = L? (wg10!=null&&ws10!=null? ws+Math.max(0,wg10-ws10) : null) : wg10;
+  const pr=c("pr")??0,pp=c("pp")??0,cape=c("cape")??0;
   const t=c("t"),td=c("td"),blh=c("blh"),lcc=c("lcc")??0,sw=c("sw")??0,w850=c("w850");
   const hr=+site.t[i].slice(11,13);
   const storm = cape>=1800 || (cape>=1000 && pp>=30);
@@ -321,13 +327,15 @@ function hourCalc(site,i){
   // per-model agreement on launch wind
   let agree=0, n=0;
   for(const [k,m] of Object.entries(site.m)){
-    const mws=m.ws[i], mwd=m.wd[i], mwg=m.wg[i], mpr=m.pr[i]??0;
+    const ml = m.wsl && m.wsl[i]!=null && m.wdl[i]!=null;
+    const mws=ml?m.wsl[i]:m.ws[i], mwd=ml?m.wdl[i]:m.wd[i], mpr=m.pr[i]??0;
+    const mwg=ml? (m.wg[i]!=null&&m.ws[i]!=null? mws+Math.max(0,m.wg[i]-m.ws[i]) : null) : m.wg[i];
     if(mws==null) continue; n++;
     const df=dirFactor(site,mwd,mws,kind==="thermal").f;
     const sf= kind==="thermal" ? (mws<=site.wind[3]?1:0) : speedF(mws,site.wind);
     if(df*sf*(kind==="thermal"?1:gustF(mws,mwg,site.wind[3]))*rainF(mpr,0) >= .55) agree++;
   }
-  return {i,hr,score,kind,ridge,thermal,ws,wd,wg,pr,pp,cape,top,usable,lapse,w850,d850:c("d850"),lcc,flags,dir:dirInfo,agree,n,storm};
+  return {i,hr,score,kind,ridge,thermal,ws,wd,wg,ws10,wd10,atLaunch:L,pr,pp,cape,top,usable,lapse,w850,d850:c("d850"),lcc,flags,dir:dirInfo,agree,n,storm};
 }
 
 function dayCalc(site,date){
@@ -435,19 +443,21 @@ function detailHTML(s,dc){
   const mname={ec:"EC",gfs:"GFS",icon:"ICON",uk:"UK"};
   const winHrs=new Set(dc.verdict!=="no"?dc.win.map(h=>h.hr):[]);
   const thermalCols = s.mode!=="ridge";
+  const band = s.band && s.c.wsl ? s.band : null;
   let rows=dc.hrs.map(h=>{
     const ok=h.dir.f>=1?"y":h.dir.f>=.5?"m":"n";
     const okTxt=!s.dirs.length?"":`<span class="dirok ${ok}">${ok==="y"?"on":ok==="m"?"cross":"off"}</span>`;
     const col=h.score>=60?"var(--go)":h.score>=35?"var(--maybe)":"var(--no)";
-    const models=mk.map(k=>{const m=s.m[k];return m.ws[h.i]==null?"–":`${Math.round(m.ws[h.i])}${comp(m.wd[h.i])}`}).join(" · ");
+    const models=mk.map(k=>{const m=s.m[k];const l=m.wsl&&m.wsl[h.i]!=null;const sp=l?m.wsl[h.i]:m.ws[h.i], dd=l?m.wdl[h.i]:m.wd[h.i];return sp==null?"–":`${Math.round(sp)}${comp(dd)}`}).join(" · ");
     return `<tr class="${winHrs.has(h.hr)?"best":""}"><td>${String(h.hr).padStart(2,"0")}:00</td>
       <td><span class="scorebar"><b style="width:${h.score}%;background:${col}"></b></span>${h.score}</td>
       <td>${arrow(h.wd)}${comp(h.wd)} ${fmt(h.ws)}${h.wg!=null?` g${fmt(h.wg)}`:""} ${okTxt}</td>
+      ${band?`<td class="models">${comp(h.wd10)} ${fmt(h.ws10)}</td>`:""}
       <td class="models">${models}</td>
       ${thermalCols?`<td>${h.top?topText(s,h.top):"–"}</td><td>${fmt(h.lapse,1)}</td><td>${h.w850!=null?`${comp(h.d850)} ${fmt(h.w850)}`:"–"}</td>`:""}
       <td>${fmt(h.lcc)}%</td><td>${h.pr>=.1?fmt(h.pr,1)+" mm":"–"} ${h.pp?`<span class="models">${fmt(h.pp)}%</span>`:""}</td><td>${h.cape>=300?`<span class="${h.storm?"flag":""}">${fmt(h.cape)}</span>`:fmt(h.cape)}</td></tr>`;
   }).join("");
-  const head=`<tr><th>Time</th><th>Score</th><th>Wind km/h</th><th>Models (${mk.map(k=>mname[k]).join(" · ")})</th>${thermalCols?"<th>Top of lift</th><th>Lapse °C/km</th><th>850 hPa wind</th>":""}<th>Low cloud</th><th>Rain</th><th>CAPE</th></tr>`;
+  const head=`<tr><th>Time</th><th>Score</th><th>${band?`Wind at launch +0–${band} m`:"Wind km/h"}</th>${band?"<th>Ground (10 m)</th>":""}<th>Models (${mk.map(k=>mname[k]).join(" · ")})</th>${thermalCols?"<th>Top of lift</th><th>Lapse °C/km</th><th>850 hPa wind</th>":""}<th>Low cloud</th><th>Rain</th><th>CAPE</th></tr>`;
 
   // observations
   const ob=s.bom.obs||[];
@@ -463,7 +473,7 @@ function detailHTML(s,dc){
     const ex=s.tide.ext.filter(x=>x[0].startsWith(dc.date));
     tideHTML=`<div class="box"><h4>Tides ${esc(dayLabel(dc.date))}</h4><div class="mono">${ex.map(x=>`${x[1]==="H"?"High":"Low"} ${x[0].slice(11,16)} (${x[2]>0?"+":""}${x[2]} m)`).join("<br>")||"–"}</div>${s.tide_note?`<span class="note">${esc(s.tide_note)}</span>`:""}<span class="note">Modelled sea level; check BOM/MSQ tide tables for official times.</span></div>`;
   }
-  const xc = s.mode!=="ridge" && dc.peak.d850!=null ? `<div class="box"><h4>XC outlook</h4><div>Top of lift around <b>${dc.peak.top?topText(s,dc.peak.top):"–"}</b>${s.cta?` (CTA ${s.cta.toLocaleString()} ft)`:""}. Wind at ~1,500 m from the ${comp(dc.peak.d850)} at ${fmt(dc.peak.w850)} km/h, so drift heads ${comp((dc.peak.d850+180)%360)}.</div><span class="note">Lapse rate ${fmt(dc.peak.lapse,1)} °C/km (above 6.5 is lively). CAPE ${fmt(dc.peak.cape)} J/kg.</span></div>`:"";
+  const xc = s.mode!=="ridge" && dc.peak.d850!=null ? `<div class="box"><h4>XC outlook</h4><div>Top of lift around <b>${dc.peak.top?topText(s,dc.peak.top):"–"}</b>${dc.peak.usable!=null&&s.height!=null?`, roughly ${(Math.round(dc.peak.usable*3.281/100)*100).toLocaleString()} ft above launch`:""}${s.cta?` (CTA ${s.cta.toLocaleString()} ft)`:""}. Wind at ~1,500 m from the ${comp(dc.peak.d850)} at ${fmt(dc.peak.w850)} km/h, so drift heads ${comp((dc.peak.d850+180)%360)}.</div><span class="note">Lapse rate ${fmt(dc.peak.lapse,1)} °C/km (above 6.5 is lively). CAPE ${fmt(dc.peak.cape)} J/kg.</span></div>`:"";
   const radar = s.lat>-26.9 && s.lon>152.6 ? "IDR663" : s.lon<152.5 ? "IDR503" : "IDR663";
   const links=[
     [s.url,"Site guide / club page"],
@@ -475,7 +485,8 @@ function detailHTML(s,dc){
     ["https://skysight.io/","SkySight (subscribers)"],
   ].filter(Boolean);
   return `<div class="facts">
-      <span class="chip">Launch ${s.height!=null?s.height+" m ASL":(s.elev!=null?"≈"+Math.round(s.elev)+" m (terrain)":"–")}</span>
+      <span class="chip" ${s.height_note?`title="${esc(s.height_note)}"`:""}>Launch ${s.height!=null?(s.height_note?"≈":"")+s.height.toLocaleString()+" m ASL ("+Math.round(s.height*3.281/10)*10+" ft)":(s.elev!=null?"≈"+Math.round(s.elev)+" m (terrain)":"–")}</span>
+      ${band?`<span class="chip">Wind scored at launch height</span>`:""}
       <span class="chip">Soaring range ${s.wind[0]}–${s.wind[3]} km/h</span>
       <span class="chip">${esc(s.club)}</span>
       ${s.cta?`<span class="chip">CTA ${s.cta.toLocaleString()} ft</span>`:""}
