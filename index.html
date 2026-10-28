@@ -24,7 +24,7 @@
   --accent:#6aa6ec; --accent-ink:#0b1620;
   --go:#4fc884; --go-bg:#173a28; --maybe:#e3aa45; --maybe-bg:#3a2f17; --no:#7d8c96; --no-bg:#1d2b34; --risk:#f07b66; --risk-bg:#40211c; --sea:#0f2a3a; --landfill:#1a2a33; --coast:#3e5a6b; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
-.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px;display:flex;flex-direction:column;gap:22px}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px;display:flex;flex-direction:column;gap:22px}
 h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
 h1{font-size:2.1rem;line-height:1}
 h2{font-size:1.35rem}
@@ -116,8 +116,29 @@ footer{font-size:.78rem;color:var(--muted);max-width:75ch}
 .mapcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
 .maphead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .mapwrap{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
-@media (min-width:760px){.mapwrap{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start}}
-svg.map{width:100%;height:auto;display:block;border-radius:8px;background:var(--sea);max-height:78vh}
+@media (min-width:760px){.mapwrap{grid-template-columns:minmax(0,2.2fr) minmax(220px,1fr);align-items:start}}
+svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8px;background:var(--sea);touch-action:manipulation}
+.map .land,.map .border,.map .leader{vector-effect:non-scaling-stroke}
+.zoom{display:flex;flex-wrap:wrap;gap:6px}
+.zoom button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px;font-size:.85rem;cursor:pointer}
+.zoom button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+@media (max-width:759px){.mapwrap{margin-inline:-8px}.mapcard svg.map{border-radius:6px}}
+/* weekend */
+.weekend{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:12px}
+.pick{font-size:1.02rem;line-height:1.4;max-width:70ch}
+.pick b{font-family:var(--f-display);font-size:1.15rem;letter-spacing:.01em}
+.wk-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.wk-day{display:flex;flex-direction:column;gap:4px;min-width:0}
+.wk-day h3{font-size:1.1rem;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.wk-day h3 span{font-family:var(--f-body);font-weight:400;font-size:.75rem;color:var(--muted)}
+.wk-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;background:var(--soft);border:0;border-radius:8px;padding:8px 10px;cursor:pointer;width:100%}
+.wk-row:hover{outline:1px solid var(--line)}
+.wk-row .nm{font-weight:700;display:block;line-height:1.2}
+.wk-row .meta{font-size:.78rem;color:var(--muted);display:block}
+.wk-row .wind{font-family:var(--f-data);font-size:.78rem;color:var(--muted);text-align:right;white-space:nowrap}
+.wk-row .sc{font-family:var(--f-data);font-weight:500;font-size:.85rem;border-radius:5px;padding:3px 7px;min-width:3.2ch;text-align:center}
+.wk-row .sc.go{background:var(--go-bg);color:var(--go)} .wk-row .sc.maybe{background:var(--maybe-bg);color:var(--maybe)} .wk-row .sc.no{background:var(--no-bg);color:var(--no)}
+.wk-none{font-size:.85rem;color:var(--muted);padding:8px 0}
 .map .land{fill:var(--landfill);stroke:var(--coast);stroke-width:.7}
 .map .border{fill:none;stroke:var(--muted);stroke-width:.8;stroke-dasharray:4 3;opacity:.7}
 .map .town circle{fill:var(--muted)} .map .town text{fill:var(--muted);font:500 8.5px var(--f-body)}
@@ -159,6 +180,15 @@ svg.map{width:100%;height:auto;display:block;border-radius:8px;background:var(--
     <div class="status" id="status"><span class="chip">Loading forecast…</span></div>
   </header>
 
+  <section class="weekend" aria-labelledby="wkTitle">
+    <div class="week-head" style="padding:0">
+      <h2 id="wkTitle">This weekend</h2>
+      <span class="note" id="wkNote"></span>
+    </div>
+    <p class="pick" id="wkPick">Loading the weekend outlook…</p>
+    <div class="wk-days" id="wkDays"></div>
+  </section>
+
   <section class="week" aria-labelledby="weekTitle">
     <div class="week-head">
       <h2 id="weekTitle">7-day outlook</h2>
@@ -178,6 +208,12 @@ svg.map{width:100%;height:auto;display:block;border-radius:8px;background:var(--
         <label for="hourRange" class="eyebrow">Time</label>
         <input type="range" id="hourRange" min="5" max="18" step="1" value="5" aria-describedby="hourOut">
         <output id="hourOut" for="hourRange">Best</output>
+      </div>
+      <div class="zoom" id="zoom" role="group" aria-label="Zoom map to a region">
+        <button type="button" id="z-all" data-z="all" aria-pressed="true">All SEQ</button>
+        <button type="button" id="z-sun" data-z="sun" aria-pressed="false">Sunshine &amp; Cooloola</button>
+        <button type="button" id="z-gc" data-z="gc" aria-pressed="false">Gold Coast &amp; Scenic Rim</button>
+        <button type="button" id="z-dd" data-z="dd" aria-pressed="false">Darling Downs</button>
       </div>
       <div class="legend"><span><i style="background:var(--go)"></i>Good</span><span><i style="background:var(--maybe)"></i>Marginal</span><span><i style="background:var(--no)"></i>Unlikely</span><span><i class="arcsw"></i>Flyable wind directions</span><span>Arrow: forecast wind, longer = stronger</span></div>
     </div>
@@ -478,7 +514,15 @@ const SEA=new Set(["rainbow","teewah","sunrise","cartwright","moffats","kings"])
 const proj=(lon,lat)=>[(lon-MAP.lon0)*MAP.C*MAP.K,(MAP.lat0-lat)*MAP.K];
 const pt=(cx,cy,r,deg)=>[cx+r*Math.sin(deg*Math.PI/180),cy-r*Math.cos(deg*Math.PI/180)];
 function arcPath(cx,cy,r,a,b){ if(b<a) b+=360; const [x1,y1]=pt(cx,cy,r,a),[x2,y2]=pt(cx,cy,r,b); return `M${x1.toFixed(1)},${y1.toFixed(1)}A${r},${r} 0 ${b-a>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)}`; }
-S.hour=null;
+S.hour=null; S.zoom="all";
+// region views: [west lon, east lon, north lat, south lat]
+const REGIONS={all:null, sun:[152.22,153.62,-25.74,-26.98], gc:[152.55,153.62,-27.72,-28.42], dd:[151.82,152.62,-27.45,-28.42]};
+function viewBox(){
+  const full=[0,0,400,MAP.H]; const r=REGIONS[S.zoom]; if(!r) return full;
+  const [x0,y0]=proj(r[0],r[2]), [x1,y1]=proj(r[1],r[3]);
+  const w=x1-x0, hgt=y1-y0; // each region gets its own shape; the map's height follows it
+  return [x0, y0, w, hgt];
+}
 function mapState(s){
   const dc=dayCalc(s,S.day); if(!dc) return null;
   if(S.hour==null) return {score:dc.best, verdict:dc.verdict, h:dc.peak, label:dc.verdict!=="no"?`${String(dc.start).padStart(2,"0")}–${String(dc.end).padStart(2,"0")}`:"–"};
@@ -487,14 +531,21 @@ function mapState(s){
 }
 function renderMap(){
   const svg=document.getElementById("map");
+  const vb=viewBox(); svg.setAttribute("viewBox",vb.map(v=>v.toFixed(1)).join(" "));
+  svg.style.width=`min(100%, calc(max(92vh, 1000px) * ${(vb[2]/vb[3]).toFixed(4)}))`;
+  const inView=(x,y)=>x>=vb[0]-4&&x<=vb[0]+vb[2]+4&&y>=vb[1]-4&&y<=vb[1]+vb[3]+4;
+  const k=Math.pow(vb[2]/400,0.7); // markers shrink less than the map grows, so zooming makes them bigger but less crowded
+  const sc=(x,y)=>`transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${k.toFixed(3)}) translate(${(-x).toFixed(1)} ${(-y).toFixed(1)})"`;
   let g=`<path class="land" d="${MAP.land}"/><path class="border" d="${MAP.border}"/>`;
-  for(const [n,la,lo] of TOWNS){const [x,y]=proj(lo,la); g+=`<g class="town"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8"/><text x="${(x+(x<60?3:-3)).toFixed(1)}" y="${(y+9).toFixed(1)}" text-anchor="${x<60?"start":"end"}">${n}</text></g>`;}
+  for(const [n,la,lo] of TOWNS){const [x,y]=proj(lo,la); const left=x<60||n==="Gold Coast"||S.zoom!=="all"; g+=`<g class="town" ${sc(x,y)}><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8"/><text x="${(x+(left?3:-3)).toFixed(1)}" y="${(y+9).toFixed(1)}" text-anchor="${left?"start":"end"}">${n}</text></g>`;}
   const rows=[];
   for(const s of S.data.sites){
     const st=mapState(s); if(!st) continue;
-    const [tx,ty]=proj(s.lon,s.lat); const [dx,dy]=NUDGE[s.id]||[0,0]; const cx=tx+dx, cy=ty+dy;
+    const [tx,ty]=proj(s.lon,s.lat); const [dx,dy]=NUDGE[s.id]||[0,0]; const cx=tx+dx*k, cy=ty+dy*k;
+    rows.push({s,st}); if(!inView(tx,ty)) continue;
     let m="";
-    if(dx||dy) m+=`<line class="leader" x1="${tx.toFixed(1)}" y1="${ty.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${cy.toFixed(1)}"/><circle class="truept" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="1.6"/>`;
+    let lead="";
+    if(dx||dy) lead=`<line class="leader" x1="${tx.toFixed(1)}" y1="${ty.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${cy.toFixed(1)}"/><circle class="truept" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="${(1.6*k).toFixed(2)}"/>`;
     for(const [a,b] of s.dirs) m+=`<path class="arc" d="${arcPath(cx,cy,12.5,a,b)}"/>`;
     const h=st.h;
     if(h && h.wd!=null && h.ws!=null){
@@ -502,12 +553,11 @@ function renderMap(){
       const [hx1,hy1]=pt(x2,y2,4.5,h.wd-28), [hx2,hy2]=pt(x2,y2,4.5,h.wd+28);
       m+=`<line class="wind" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/><path class="windhead" d="M${x2.toFixed(1)},${y2.toFixed(1)}L${hx1.toFixed(1)},${hy1.toFixed(1)}L${hx2.toFixed(1)},${hy2.toFixed(1)}Z"/>`;
     }
-    const left = cx>300 || s.id==="tamborine";
+    const left = (cx-vb[0])/vb[2]>0.75 || s.id==="tamborine";
     m+=`<circle class="b" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9"/><text class="s" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}">${st.score}</text>`;
     const lx = SEA.has(s.id)? cx+13 : left? cx-13 : cx+13;
     m+=`<text class="n" x="${lx.toFixed(1)}" y="${(cy+3).toFixed(1)}" text-anchor="${(!SEA.has(s.id)&&left)?"end":"start"}">${esc(s.name)}</text>`;
-    g+=`<g class="mk ${st.verdict}${SEA.has(s.id)?" sea":""}" data-site="${s.id}" tabindex="0" role="button" aria-label="${esc(s.name)}: ${verdictText[st.verdict]} ${st.score}${h&&h.ws!=null?`, wind ${comp(h.wd)} ${Math.round(h.ws)} km/h`:""}">${m}</g>`;
-    rows.push({s,st});
+    g+=`<g class="mk ${st.verdict}${SEA.has(s.id)?" sea":""}" data-site="${s.id}" tabindex="0" role="button" aria-label="${esc(s.name)}: ${verdictText[st.verdict]} ${st.score}${h&&h.ws!=null?`, wind ${comp(h.wd)} ${Math.round(h.ws)} km/h`:""}">${lead}<g ${sc(cx,cy)}>${m}</g></g>`;
   }
   svg.innerHTML=g;
   rows.sort((a,b)=>b.st.score-a.st.score);
@@ -522,10 +572,62 @@ function openSite(id){
 document.getElementById("map").addEventListener("click",e=>{const g=e.target.closest(".mk"); if(g) openSite(g.dataset.site);});
 document.getElementById("map").addEventListener("keydown",e=>{const g=e.target.closest(".mk"); if(g&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openSite(g.dataset.site);}});
 document.getElementById("maplist").addEventListener("click",e=>{const b=e.target.closest("button"); if(b) openSite(b.dataset.site);});
+document.getElementById("zoom").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  S.zoom=b.dataset.z; document.querySelectorAll("#zoom button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+  try{localStorage.setItem("sw-zoom",S.zoom);}catch(_){}
+  renderMap();
+});
 document.getElementById("hourRange").addEventListener("input",e=>{
   const v=+e.target.value; S.hour = v<6?null:v;
   document.getElementById("hourOut").textContent = S.hour==null?"Best":String(S.hour).padStart(2,"0")+":00";
   renderMap();
+});
+
+
+const DAYFMT={weekday:"long",day:"numeric",month:"short",timeZone:"Australia/Brisbane"};
+function weekendDays(){
+  const out=[];
+  for(const d of dates()){
+    const wd=new Date(d+"T12:00:00+10:00").getUTCDay();
+    if(wd===6||wd===0){ out.push(d); if(wd===0) break; }
+    else if(out.length) break;
+  }
+  return out;
+}
+const hh=n=>String(n).padStart(2,"0")+":00";
+function renderWeekend(){
+  const days=weekendDays();
+  const pickEl=document.getElementById("wkPick"), daysEl=document.getElementById("wkDays");
+  if(!days.length){ pickEl.textContent="The weekend is past the end of the 7-day forecast."; daysEl.innerHTML=""; return; }
+  const today=S.data.generated.slice(0,10);
+  const out=Math.round((new Date(days[0])-new Date(today))/864e5);
+  document.getElementById("wkNote").textContent = out>=2 ? `${out} days out: expect changes, re-check Friday evening.` : "Based on the latest model runs.";
+  let best=null; let html="";
+  for(const d of days){
+    const ranked=S.data.sites.map(s=>({s,dc:dayCalc(s,d)})).filter(x=>x.dc).sort((a,b)=>b.dc.best-a.dc.best);
+    const good=ranked.filter(x=>x.dc.verdict!=="no").slice(0,4);
+    if(ranked[0] && (!best || ranked[0].dc.best>best.dc.best)) best={...ranked[0],d};
+    const label=new Date(d+"T12:00:00+10:00").toLocaleDateString("en-AU",DAYFMT);
+    const rows = good.length ? good.map(({s,dc})=>{
+      const p=dc.peak; const kind=p.kind==="thermal"?"Thermals":"Soaring";
+      return `<button type="button" class="wk-row" data-site="${s.id}" data-day="${d}">
+        <span class="sc ${dc.verdict}">${dc.best}</span>
+        <span><span class="nm">${esc(s.name)}</span><span class="meta">${hh(dc.start)}–${hh(dc.end)} · ${kind} · ${confText(dc.agreeRatio,d)} confidence${dc.flags.length?` · <span class="flag">${esc(dc.flags[0])}</span>`:""}</span></span>
+        <span class="wind">${arrow(p.wd)}${comp(p.wd)} ${fmt(p.ws)}<br>km/h</span></button>`;}).join("")
+      : `<div class="wk-none">Nothing scores above 35 yet. Closest: ${ranked[0]?`${esc(ranked[0].s.name)} (${ranked[0].dc.best})`:"–"}.</div>`;
+    html+=`<div class="wk-day"><h3>${esc(label)} <span>${good.length} site${good.length===1?"":"s"} in play</span></h3>${rows}</div>`;
+  }
+  daysEl.innerHTML=html;
+  if(best && best.dc.verdict!=="no"){
+    const dn=new Date(best.d+"T12:00:00+10:00").toLocaleDateString("en-AU",{weekday:"long",timeZone:"Australia/Brisbane"});
+    const p=best.dc.peak;
+    pickEl.innerHTML=`Best bet: <b>${esc(best.s.name)}</b> on ${dn}, ${hh(best.dc.start)}–${hh(best.dc.end)}, ${comp(p.wd)} ${fmt(p.ws)} km/h${p.kind==="thermal"&&p.top?`, lift to about ${topText(best.s,p.top)}`:""} (score ${best.dc.best}, ${confText(best.dc.agreeRatio,best.d).toLowerCase()} confidence).`;
+  } else pickEl.textContent="No site looks flyable this weekend on current forecasts.";
+}
+document.getElementById("wkDays").addEventListener("click",e=>{
+  const b=e.target.closest(".wk-row"); if(!b) return;
+  S.day=b.dataset.day; renderGrid(); renderMap(); openSite(b.dataset.site);
 });
 
 function renderAll(){ renderGrid(); renderMap(); renderLadder(); }
@@ -558,7 +660,8 @@ document.getElementById("filters").addEventListener("click",e=>{
   const ds=dates();
   const nowH=+new Date().toLocaleString("en-AU",{hour:"numeric",hour12:false,timeZone:"Australia/Brisbane"});
   S.day = (ds[0]===S.data.generated.slice(0,10) && nowH>=16 && ds[1]) ? ds[1] : ds[0];
-  renderStatus(); renderAll();
+  try{ const z=localStorage.getItem("sw-zoom"); if(z&&z in REGIONS){S.zoom=z;document.querySelectorAll("#zoom button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.z===z));} }catch(_){}
+  renderStatus(); renderWeekend(); renderAll();
 })();
 </script>
 
