@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Sky Window SEQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a pilot's briefing board. Week grid on top, a day's site ladder below, tap a site for the hour-by-hour sheet. */
+:root{
+  --bg:#eef2f4; --panel:#ffffff; --ink:#132430; --muted:#5b6d79; --line:#d5dee3; --soft:#e3eaee;
+  --accent:#1d5fa8; --accent-ink:#ffffff;
+  --go:#1f8a4c; --go-bg:#dcf1e4; --maybe:#b57a0a; --maybe-bg:#f8ecd2; --no:#8a96a0; --no-bg:#e6ebee; --risk:#c2412d; --risk-bg:#f9e0db;
+  --sea:#cfe0ea; --landfill:#f6f4ee; --coast:#8fa9b8;
+  --f-display:"Saira Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1820; --panel:#14232d; --ink:#e3ecf1; --muted:#93a6b2; --line:#26394560; --soft:#1b2d38;
+  --accent:#6aa6ec; --accent-ink:#0b1620;
+  --go:#4fc884; --go-bg:#173a28; --maybe:#e3aa45; --maybe-bg:#3a2f17; --no:#7d8c96; --no-bg:#1d2b34; --risk:#f07b66; --risk-bg:#40211c; --sea:#0f2a3a; --landfill:#1a2a33; --coast:#3e5a6b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1820; --panel:#14232d; --ink:#e3ecf1; --muted:#93a6b2; --line:#26394560; --soft:#1b2d38;
+  --accent:#6aa6ec; --accent-ink:#0b1620;
+  --go:#4fc884; --go-bg:#173a28; --maybe:#e3aa45; --maybe-bg:#3a2f17; --no:#7d8c96; --no-bg:#1d2b34; --risk:#f07b66; --risk-bg:#40211c; --sea:#0f2a3a; --landfill:#1a2a33; --coast:#3e5a6b; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px;display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:2.1rem;line-height:1}
+h2{font-size:1.35rem}
+.eyebrow{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.12em;font-size:.78rem;color:var(--muted);font-weight:600}
+.mono{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 20px}
+.brand{display:flex;flex-direction:column;gap:4px}
+.status{font-size:.85rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:2px 9px;font-size:.78rem;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--go)}
+.dot.off{background:var(--risk)}
+
+/* week grid */
+.week{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.week-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 14px 6px;flex-wrap:wrap}
+.grid-scroll{overflow-x:auto}
+table.grid{border-collapse:separate;border-spacing:3px;width:100%;min-width:360px;padding:0 8px 10px}
+.grid th{font-family:var(--f-display);font-weight:600;font-size:.82rem;color:var(--muted);text-align:center;padding:2px 0;line-height:1.1}
+.grid th.sel{color:var(--accent)}
+.grid th small{display:block;font-weight:500;font-size:.72rem}
+.grid td.name{font-size:.82rem;white-space:nowrap;padding-right:6px;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.grid td.name span{color:var(--muted);font-size:.72rem;display:block;line-height:1}
+.cell{display:block;width:100%;min-width:34px;height:30px;border:0;border-radius:5px;cursor:pointer;font-family:var(--f-data);font-size:.74rem;font-weight:500}
+.cell.go{background:var(--go-bg);color:var(--go)}
+.cell.maybe{background:var(--maybe-bg);color:var(--maybe)}
+.cell.no{background:var(--no-bg);color:var(--no)}
+.cell.sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.cell.lowconf{opacity:.62}
+.region-row td{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.1em;font-size:.68rem;color:var(--muted);padding:8px 0 0}
+
+/* day bar */
+.daybar{display:flex;flex-direction:column;gap:12px}
+.dayline{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.filters button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px;font-size:.85rem;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* site ladder */
+.ladder{display:flex;flex-direction:column;gap:10px}
+.site{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.site>summary{list-style:none;cursor:pointer;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start}
+.site>summary::-webkit-details-marker{display:none}
+.site-title{display:flex;flex-direction:column;gap:2px;min-width:0}
+.site-title h3{font-size:1.25rem;line-height:1.05}
+.site-title .sub{font-size:.8rem;color:var(--muted)}
+.verdict{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.pill{font-family:var(--f-display);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:.82rem;border-radius:5px;padding:2px 8px}
+.pill.go{background:var(--go-bg);color:var(--go)}
+.pill.maybe{background:var(--maybe-bg);color:var(--maybe)}
+.pill.no{background:var(--no-bg);color:var(--no)}
+.conf{font-size:.72rem;color:var(--muted)}
+.keyline{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.86rem}
+.keyline b{font-weight:700}
+.flag{color:var(--risk);font-weight:700}
+.strip{grid-column:1/-1;display:grid;grid-template-columns:repeat(13,1fr);gap:2px}
+.strip i{height:16px;border-radius:2px;background:var(--no-bg);position:relative}
+.strip i.go{background:var(--go)} .strip i.maybe{background:var(--maybe)} .strip i.meh{background:var(--maybe-bg)}
+.strip-hours{grid-column:1/-1;display:grid;grid-template-columns:repeat(13,1fr);gap:2px;font-family:var(--f-data);font-size:.62rem;color:var(--muted);margin-top:-4px}
+.strip-hours span{text-align:center}
+
+.detail{border-top:1px solid var(--line);padding:12px 14px 16px;display:flex;flex-direction:column;gap:14px}
+.facts{display:flex;flex-wrap:wrap;gap:6px}
+.table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table.hours{border-collapse:collapse;width:100%;font-size:.8rem;min-width:620px}
+.hours th{font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.05em;font-size:.7rem;color:var(--muted);text-align:left;padding:6px 8px;background:var(--soft);white-space:nowrap}
+.hours td{padding:5px 8px;border-top:1px solid var(--line);white-space:nowrap;font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.hours tr.best td{background:color-mix(in srgb,var(--go-bg) 60%,transparent)}
+.arrow{display:inline-block;width:14px;text-align:center;color:var(--accent)}
+.dirok{font-family:var(--f-body);font-size:.72rem;padding:0 5px;border-radius:3px}
+.dirok.y{background:var(--go-bg);color:var(--go)} .dirok.m{background:var(--maybe-bg);color:var(--maybe)} .dirok.n{background:var(--no-bg);color:var(--no)}
+.scorebar{display:inline-block;width:46px;height:7px;border-radius:4px;background:var(--soft);vertical-align:middle;margin-right:6px;overflow:hidden}
+.scorebar b{display:block;height:100%}
+.models{color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.box{background:var(--soft);border-radius:8px;padding:10px 12px;font-size:.85rem;display:flex;flex-direction:column;gap:6px;min-width:0}
+.box h4{margin:0;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;color:var(--muted)}
+.links{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.85rem}
+.note{font-size:.82rem;color:var(--muted)}
+.empty{padding:30px;text-align:center;color:var(--muted);background:var(--panel);border:1px dashed var(--line);border-radius:10px}
+.howto{font-size:.85rem;color:var(--muted);display:flex;flex-direction:column;gap:6px;max-width:70ch}
+.howto summary{cursor:pointer;color:var(--ink);font-weight:700}
+footer{font-size:.78rem;color:var(--muted);max-width:75ch}
+
+/* map */
+.mapcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.maphead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mapwrap{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+@media (min-width:760px){.mapwrap{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start}}
+svg.map{width:100%;height:auto;display:block;border-radius:8px;background:var(--sea);max-height:78vh}
+.map .land{fill:var(--landfill);stroke:var(--coast);stroke-width:.7}
+.map .border{fill:none;stroke:var(--muted);stroke-width:.8;stroke-dasharray:4 3;opacity:.7}
+.map .town circle{fill:var(--muted)} .map .town text{fill:var(--muted);font:500 8.5px var(--f-body)}
+.map .leader{stroke:var(--muted);stroke-width:.7}
+.map .truept{fill:var(--ink)}
+.map .arc{fill:none;stroke:var(--accent);stroke-width:4;opacity:.55}
+.map .wind{stroke:var(--ink);stroke-width:1.6;fill:none;stroke-linecap:round}
+.map .windhead{fill:var(--ink)}
+.map .mk circle.b{stroke:var(--panel);stroke-width:1.5}
+.map .mk.go circle.b{fill:var(--go)} .map .mk.maybe circle.b{fill:var(--maybe)} .map .mk.no circle.b{fill:var(--no)}
+.map .mk text.s{fill:#fff;font:600 9.5px var(--f-data);text-anchor:middle;dominant-baseline:central}
+.map .mk text.n{fill:var(--ink);font:700 9px var(--f-body);paint-order:stroke;stroke:var(--landfill);stroke-width:2.5px;stroke-linejoin:round}
+.map .mk.sea text.n{stroke:var(--sea)}
+.map .mk{cursor:pointer}
+.map .mk:focus-visible circle.b{stroke:var(--accent);stroke-width:3}
+.scrub{display:flex;flex-direction:column;gap:6px}
+.scrub-row{display:flex;align-items:center;gap:10px}
+.scrub input{flex:1;min-width:0;accent-color:var(--accent)}
+.scrub output{font-family:var(--f-data);min-width:7ch;text-align:right;font-weight:500}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.legend .arcsw{width:16px;height:4px;border-radius:2px;background:var(--accent);opacity:.6}
+.maplist{display:flex;flex-direction:column;gap:4px;font-size:.84rem}
+.maplist button{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:5px 2px;cursor:pointer}
+.maplist button span.w{font-family:var(--f-data);color:var(--muted);font-size:.78rem;white-space:nowrap}
+.maplist .sc{font-family:var(--f-data);font-size:.75rem;border-radius:4px;padding:1px 6px;min-width:3ch;text-align:center}
+.maplist .sc.go{background:var(--go-bg);color:var(--go)} .maplist .sc.maybe{background:var(--maybe-bg);color:var(--maybe)} .maplist .sc.no{background:var(--no-bg);color:var(--no)}
+@media (prefers-reduced-motion:no-preference){.site[open]>.detail{animation:fade .18s ease-out}}
+@keyframes fade{from{opacity:.4}to{opacity:1}}
+</style>
+</head><body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="eyebrow">South-East Queensland free flight</span>
+      <h1>Sky Window</h1>
+    </div>
+    <div class="status" id="status"><span class="chip">Loading forecast…</span></div>
+  </header>
+
+  <section class="week" aria-labelledby="weekTitle">
+    <div class="week-head">
+      <h2 id="weekTitle">7-day outlook</h2>
+      <span class="note">Best 3-hour window score per site. Faded cells: models disagree. Tap a cell to open that day.</span>
+    </div>
+    <div class="grid-scroll"><table class="grid" id="grid"><tbody><tr><td class="empty">Fetching model runs…</td></tr></tbody></table></div>
+  </section>
+
+
+  <section class="mapcard" aria-labelledby="mapTitle">
+    <div class="maphead">
+      <h2 id="mapTitle">Map</h2>
+      <span class="note" id="mapDay"></span>
+    </div>
+    <div class="scrub">
+      <div class="scrub-row">
+        <label for="hourRange" class="eyebrow">Time</label>
+        <input type="range" id="hourRange" min="5" max="18" step="1" value="5" aria-describedby="hourOut">
+        <output id="hourOut" for="hourRange">Best</output>
+      </div>
+      <div class="legend"><span><i style="background:var(--go)"></i>Good</span><span><i style="background:var(--maybe)"></i>Marginal</span><span><i style="background:var(--no)"></i>Unlikely</span><span><i class="arcsw"></i>Flyable wind directions</span><span>Arrow: forecast wind, longer = stronger</span></div>
+    </div>
+    <div class="mapwrap">
+      <svg class="map" id="map" viewBox="0 0 400 662.2" role="img" aria-labelledby="mapTitle mapDay"></svg>
+      <div class="maplist" id="maplist" aria-label="Sites ranked for the selected time"></div>
+    </div>
+  </section>
+  <section class="daybar">
+    <div class="dayline">
+      <h2 id="dayTitle">Sites</h2>
+      <div class="filters" id="filters" role="group" aria-label="Filter sites">
+        <button type="button" id="f-all" data-f="all" aria-pressed="true">All</button>
+        <button type="button" id="f-coast" data-f="coast" aria-pressed="false">Coastal soaring</button>
+        <button type="button" id="f-inland" data-f="inland" aria-pressed="false">Inland &amp; XC</button>
+        <button type="button" id="f-sort" data-sort="1" aria-pressed="true">Best first</button>
+      </div>
+    </div>
+    <div class="ladder" id="ladder"></div>
+  </section>
+
+  <details class="howto">
+    <summary>How the scores work</summary>
+    <p><b>Coastal and ridge soaring</b> scores wind direction against each launch's flyable arc, wind strength against the site's soaring range, gust spread, rain and storm risk.</p>
+    <p><b>Thermal and XC</b> scores (09:00–17:00) use usable lift height (lower of the boundary layer top and estimated cloudbase), the 850–700 hPa lapse rate, sunshine, wind at about 1,500 m, launch wind, and storm risk from CAPE and rain chance. "Top of lift" is shown in feet above sea level, capped where the site has a CTA ceiling.</p>
+    <p><b>Model agreement</b> re-scores the launch wind using each model separately (ECMWF, GFS, ICON, UK Met Office). Low agreement means treat the day as uncertain, especially 4+ days out.</p>
+    <p>Wind ranges per site are starting estimates for paragliders. Ask Claude to adjust any site's range, add a site, or change the launch arcs.</p>
+  </details>
+
+  <footer>
+    Forecast data: ECMWF, NOAA GFS, DWD ICON and UK Met Office models via Open-Meteo (CC BY 4.0); tides via Open-Meteo Marine; station observations © Bureau of Meteorology. Site details from the SAFA National Site Guide and club pages. This is a planning aid only: confirm conditions on site, follow SAFA rules and club site protocols, and get a briefing from the duty pilot or safety officer.
+  </footer>
+</div>
+
+<script>
+const S = { data:null, day:null, filter:"all", sort:true, open:new Set() };
+const HOURS = [6,7,8,9,10,11,12,13,14,15,16,17,18];
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const comp=d=>d==null?"–":COMPASS[Math.round(d/22.5)%16];
+const fmt=(x,n=0)=>x==null||isNaN(x)?"–":Number(x).toFixed(n);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const arrow=d=>d==null?"":`<span class="arrow" style="transform:rotate(${(d+180)%360}deg)" aria-hidden="true">↑</span>`;
+
+function inArc(d,a,b){ d=(d+360)%360; return a<=b ? d>=a&&d<=b : d>=a||d<=b; }
+function angDist(d,a){ const x=Math.abs(((d-a)%360+540)%360-180); return x; }
+function dirFactor(site,wd,ws,light){
+  if(!site.dirs.length) return {f:.85,label:null};
+  if(wd==null) return {f:0,label:null};
+  let best=0,label=null;
+  for(const [a,b,name] of site.dirs){
+    let f; if(inArc(wd,a,b)) f=1; else { const d=Math.min(angDist(wd,a),angDist(wd,b)); f=d<=15?.5:d<=25?.2:0; }
+    if(f>best){best=f;label=name;}
+  }
+  if(light && ws!=null && ws<6) best=Math.max(best,.7);
+  return {f:best,label};
+}
+function speedF(ws,[mn,lo,hi,mx]){
+  if(ws==null) return 0;
+  if(ws<mn) return 0; if(ws<lo) return .5+.5*(ws-mn)/Math.max(1,lo-mn);
+  if(ws<=hi) return 1; if(ws<=mx) return 1-.6*(ws-hi)/Math.max(1,mx-hi); return 0;
+}
+function gustF(ws,wg,mx){ if(wg==null||ws==null) return 1; const g=wg-ws; let f=g<=10?1:g<=18?1-(g-10)/16:.4; if(wg>mx+8) f*=.3; return f; }
+function rainF(pr,pp){ let f=1; if(pr>=.5) return 0; if(pr>=.2) f=.5; if(pp>=60) f*=.7; return f; }
+
+function hourCalc(site,i){
+  const c=k=>site.c[k][i];
+  const ws=c("ws"),wd=c("wd"),wg=c("wg"),pr=c("pr")??0,pp=c("pp")??0,cape=c("cape")??0;
+  const t=c("t"),td=c("td"),blh=c("blh"),lcc=c("lcc")??0,sw=c("sw")??0,w850=c("w850");
+  const hr=+site.t[i].slice(11,13);
+  const storm = cape>=1800 || (cape>=1000 && pp>=30);
+  const stormF = storm?.45:1;
+  const flags=[];
+  if(storm) flags.push("Storm risk");
+  // ridge
+  let ridge=0, dirInfo=dirFactor(site,wd,ws,false);
+  if(site.mode!=="thermal"){
+    ridge=100*dirInfo.f*speedF(ws,site.wind)*gustF(ws,wg,site.wind[3])*rainF(pr,pp)*stormF;
+  }
+  // thermal
+  let thermal=0, top=null, usable=null, lapse=null;
+  const cb = (t!=null&&td!=null)? Math.max(0,(t-td)*125):null;
+  usable = blh!=null && cb!=null ? Math.min(blh,cb) : (blh??cb);
+  const z7=c("z700"),z8=c("z850");
+  if(c("t850")!=null&&c("t700")!=null&&z7&&z8) lapse=(c("t850")-c("t700"))/((z7-z8)/1000);
+  const elev = site.height ?? site.elev ?? 0;
+  if(usable!=null) top=(elev+usable)*3.281;
+  if(site.mode!=="ridge" && hr>=9 && hr<=17){
+    const d=dirFactor(site,wd,ws,true);
+    const [mn,lo,hi,mx]=site.wind;
+    const spd = ws==null?0: ws>mx?0: ws>hi? 1-.6*(ws-hi)/Math.max(1,mx-hi):1;
+    const gf = wg!=null&&ws!=null&&wg-ws>15?.6:1;
+    const hF = usable==null?0:clamp((usable-400)/1400,0,1);
+    const lF = lapse==null?.6:clamp((lapse-4)/3,.15,1);
+    const sF = clamp(sw/650,0,1)*(1-.6*clamp((lcc-50)/50,0,1));
+    const aF = w850==null?1: w850<=20?1: w850<=35? 1-.6*(w850-20)/15 : w850<=45?.3:0;
+    thermal=100*d.f*spd*gf*Math.pow(hF,.7)*Math.sqrt(lF*sF)*aF*rainF(pr,pp)*stormF;
+    if(thermal>ridge) dirInfo=d;
+    if(w850!=null && w850>35) flags.push("Strong wind aloft");
+  }
+  if(wg!=null && ws!=null && wg-ws>18 && wg>28) flags.push("Gusty");
+  if(pr>=.2) flags.push("Rain");
+  const score=Math.round(Math.max(ridge,thermal));
+  const kind = thermal>ridge?"thermal":"ridge";
+  // per-model agreement on launch wind
+  let agree=0, n=0;
+  for(const [k,m] of Object.entries(site.m)){
+    const mws=m.ws[i], mwd=m.wd[i], mwg=m.wg[i], mpr=m.pr[i]??0;
+    if(mws==null) continue; n++;
+    const df=dirFactor(site,mwd,mws,kind==="thermal").f;
+    const sf= kind==="thermal" ? (mws<=site.wind[3]?1:0) : speedF(mws,site.wind);
+    if(df*sf*(kind==="thermal"?1:gustF(mws,mwg,site.wind[3]))*rainF(mpr,0) >= .55) agree++;
+  }
+  return {i,hr,score,kind,ridge,thermal,ws,wd,wg,pr,pp,cape,top,usable,lapse,w850,d850:c("d850"),lcc,flags,dir:dirInfo,agree,n,storm};
+}
+
+function dayCalc(site,date){
+  const idx=[]; site.t.forEach((t,i)=>{ if(t.startsWith(date)) idx.push(i); });
+  const hrs=idx.map(i=>hourCalc(site,i)).filter(h=>h.hr>=6&&h.hr<=18);
+  if(!hrs.length) return null;
+  let best=-1,bi=0;
+  for(let j=0;j<hrs.length;j++){ const w=hrs.slice(j,j+3); const m=w.reduce((a,h)=>a+h.score,0)/w.length; if(w.length===3||hrs.length<3){ if(m>best){best=m;bi=j;} } }
+  best=Math.round(Math.max(0,best));
+  const peak=hrs.slice(bi,bi+3).reduce((a,h)=>h.score>a.score?h:a,hrs[bi]);
+  const thr=Math.max(35,peak.score*.7);
+  let s=hrs.indexOf(peak), e=s; while(s>0&&hrs[s-1].score>=thr) s--; while(e<hrs.length-1&&hrs[e+1].score>=thr) e++;
+  const win=hrs.slice(s,e+1);
+  const agreeRatio = win.reduce((a,h)=>a+(h.n?h.agree/h.n:0),0)/win.length;
+  const verdict = best>=60?"go":best>=35?"maybe":"no";
+  const flags=[...new Set(win.flatMap(h=>h.flags))];
+  const anyStorm=hrs.some(h=>h.storm&&h.hr>=10);
+  if(anyStorm && !flags.includes("Storm risk")) flags.push("Storm risk later");
+  return {date,hrs,best,peak,win,verdict,agreeRatio,flags,
+          start:win[0].hr,end:win[win.length-1].hr+1};
+}
+
+function dayLabel(date,short){
+  const d=new Date(date+"T12:00:00+10:00");
+  const today=S.data.generated.slice(0,10);
+  const tom=new Date(new Date(today+"T12:00:00+10:00").getTime()+864e5).toISOString().slice(0,10);
+  if(date===today) return short?"Today":"Today";
+  if(date===tom) return short?"Tmrw":"Tomorrow";
+  return d.toLocaleDateString("en-AU",short?{weekday:"short",timeZone:"Australia/Brisbane"}:{weekday:"long",day:"numeric",month:"short",timeZone:"Australia/Brisbane"});
+}
+const verdictText={go:"Good",maybe:"Marginal",no:"Unlikely"};
+function confText(r,date){
+  const daysOut=Math.round((new Date(date)-new Date(S.data.generated.slice(0,10)))/864e5);
+  let c = r>=.74?"High":r>=.49?"Medium":"Low";
+  if(daysOut>=4 && c==="High") c="Medium";
+  return c;
+}
+
+function dates(){ return [...new Set(S.data.sites[0].t.map(t=>t.slice(0,10)))].filter(d=>{
+  const site=S.data.sites[0]; return site.t.some(t=>t.startsWith(d)&&+t.slice(11,13)>=9);
+}).slice(0,7); }
+
+function renderStatus(){
+  const g=new Date(S.data.generated);
+  const ageH=(Date.now()-g.getTime())/36e5;
+  const when=g.toLocaleString("en-AU",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"Australia/Brisbane"});
+  document.getElementById("status").innerHTML =
+    `<span>Updated ${esc(when)} AEST${ageH>7?` <span class="flag">(${Math.round(ageH)} h old)</span>`:""}</span>`+
+    S.data.models.map(m=>`<span class="chip" title="${esc(m.id)}"><span class="dot${m.ok?"":" off"}"></span>${esc(m.label)}</span>`).join("");
+}
+
+function renderGrid(){
+  const ds=dates();
+  const regions=[...new Set(S.data.sites.map(s=>s.region))];
+  let h=`<thead><tr><th></th>${ds.map(d=>{const dt=new Date(d+"T12:00:00+10:00");return `<th class="${d===S.day?"sel":""}">${esc(dayLabel(d,true))}<small>${dt.getDate()}</small></th>`}).join("")}</tr></thead><tbody>`;
+  for(const r of regions){
+    h+=`<tr class="region-row"><td colspan="${ds.length+1}">${esc(r)}</td></tr>`;
+    for(const s of S.data.sites.filter(x=>x.region===r)){
+      h+=`<tr><td class="name" title="${esc(s.name)}">${esc(s.name)}</td>`;
+      for(const d of ds){
+        const dc=dayCalc(s,d);
+        if(!dc){h+="<td></td>";continue;}
+        const lc=confText(dc.agreeRatio,d)==="Low"&&dc.verdict!=="no";
+        h+=`<td><button type="button" class="cell ${dc.verdict}${lc?" lowconf":""}${d===S.day?" sel":""}" data-site="${s.id}" data-day="${d}" aria-label="${esc(s.name)} ${esc(dayLabel(d))}: ${verdictText[dc.verdict]}, score ${dc.best}">${dc.best}</button></td>`;
+      }
+      h+="</tr>";
+    }
+  }
+  document.getElementById("grid").innerHTML=h+"</tbody>";
+}
+
+function stripHTML(dc){
+  const byHr=Object.fromEntries(dc.hrs.map(h=>[h.hr,h]));
+  return `<div class="strip" aria-hidden="true">${HOURS.map(hr=>{const h=byHr[hr];const c=!h?"":h.score>=60?"go":h.score>=35?"maybe":h.score>=15?"meh":"";return `<i class="${c}" title="${hr}:00 ${h?h.score:""}"></i>`}).join("")}</div>
+  <div class="strip-hours" aria-hidden="true">${HOURS.map(hr=>`<span>${hr%3===0?hr:""}</span>`).join("")}</div>`;
+}
+
+function keyline(s,dc){
+  const p=dc.peak; const parts=[];
+  if(dc.verdict!=="no") parts.push(`<span><b>${String(dc.start).padStart(2,"0")}:00–${String(dc.end).padStart(2,"0")}:00</b></span>`);
+  parts.push(`<span class="mono">${arrow(p.wd)} ${comp(p.wd)} ${fmt(p.ws)}${p.wg!=null?` g${fmt(p.wg)}`:""} km/h</span>`);
+  if(p.kind==="thermal"||s.mode==="thermal"){ parts.push(`<span>Lift to <b class="mono">${p.top?topText(s,p.top):"–"}</b></span>`); }
+  if(p.dir.label && s.dirs.length>1) parts.push(`<span>${esc(p.dir.label)}</span>`);
+  for(const f of dc.flags) parts.push(`<span class="flag">${esc(f)}</span>`);
+  return parts.join("");
+}
+function topText(s,ft){ const r=Math.round(ft/100)*100; if(s.cta && r>s.cta) return `${s.cta.toLocaleString()} ft (CTA)`; return `${r.toLocaleString()} ft`; }
+
+function siteCard(s,dc){
+  const conf=confText(dc.agreeRatio,dc.date);
+  const isOpen=S.open.has(s.id);
+  return `<details class="site" id="site-${s.id}" data-id="${s.id}"${isOpen?" open":""}>
+   <summary>
+     <div class="site-title"><h3>${esc(s.name)}</h3><span class="sub">${esc(s.sub)} · ${esc(s.region)} · ${s.dirs.length?esc(s.dirs.map(d=>d[2]).join(", ")):"any direction"} · ${esc(s.rating)}</span></div>
+     <div class="verdict"><span class="pill ${dc.verdict}">${verdictText[dc.verdict]} ${dc.best}</span><span class="conf">${conf} confidence</span></div>
+     <div class="keyline">${keyline(s,dc)}</div>
+     ${stripHTML(dc)}
+   </summary>
+   <div class="detail">${isOpen?detailHTML(s,dc):""}</div>
+  </details>`;
+}
+
+function detailHTML(s,dc){
+  const mk=S.data.models.filter(m=>m.ok).map(m=>m.key);
+  const mname={ec:"EC",gfs:"GFS",icon:"ICON",uk:"UK"};
+  const winHrs=new Set(dc.verdict!=="no"?dc.win.map(h=>h.hr):[]);
+  const thermalCols = s.mode!=="ridge";
+  let rows=dc.hrs.map(h=>{
+    const ok=h.dir.f>=1?"y":h.dir.f>=.5?"m":"n";
+    const okTxt=!s.dirs.length?"":`<span class="dirok ${ok}">${ok==="y"?"on":ok==="m"?"cross":"off"}</span>`;
+    const col=h.score>=60?"var(--go)":h.score>=35?"var(--maybe)":"var(--no)";
+    const models=mk.map(k=>{const m=s.m[k];return m.ws[h.i]==null?"–":`${Math.round(m.ws[h.i])}${comp(m.wd[h.i])}`}).join(" · ");
+    return `<tr class="${winHrs.has(h.hr)?"best":""}"><td>${String(h.hr).padStart(2,"0")}:00</td>
+      <td><span class="scorebar"><b style="width:${h.score}%;background:${col}"></b></span>${h.score}</td>
+      <td>${arrow(h.wd)}${comp(h.wd)} ${fmt(h.ws)}${h.wg!=null?` g${fmt(h.wg)}`:""} ${okTxt}</td>
+      <td class="models">${models}</td>
+      ${thermalCols?`<td>${h.top?topText(s,h.top):"–"}</td><td>${fmt(h.lapse,1)}</td><td>${h.w850!=null?`${comp(h.d850)} ${fmt(h.w850)}`:"–"}</td>`:""}
+      <td>${fmt(h.lcc)}%</td><td>${h.pr>=.1?fmt(h.pr,1)+" mm":"–"} ${h.pp?`<span class="models">${fmt(h.pp)}%</span>`:""}</td><td>${h.cape>=300?`<span class="${h.storm?"flag":""}">${fmt(h.cape)}</span>`:fmt(h.cape)}</td></tr>`;
+  }).join("");
+  const head=`<tr><th>Time</th><th>Score</th><th>Wind km/h</th><th>Models (${mk.map(k=>mname[k]).join(" · ")})</th>${thermalCols?"<th>Top of lift</th><th>Lapse °C/km</th><th>850 hPa wind</th>":""}<th>Low cloud</th><th>Rain</th><th>CAPE</th></tr>`;
+
+  // observations
+  const ob=s.bom.obs||[];
+  let obsHTML="<span class='note'>No recent observation available.</span>";
+  if(ob.length){
+    const o=ob[0]; const tt=o.t?`${o.t.slice(8,10)}:${o.t.slice(10,12)}`:"";
+    obsHTML=`<div class="mono">${esc(o.dir||"–")} ${fmt(o.ws)} g${fmt(o.wg)} km/h · ${fmt(o.temp,1)}°C · ${fmt(o.rh)}% RH</div>
+      <span class="note">As at ${esc(tt)} on refresh. Trend: ${ob.slice(0,6).reverse().map(x=>`${x.dir||"–"} ${x.ws??"–"}`).map(esc).join(" → ")}</span>`;
+  }
+  // tides
+  let tideHTML="";
+  if(s.tide && s.tide.ext){
+    const ex=s.tide.ext.filter(x=>x[0].startsWith(dc.date));
+    tideHTML=`<div class="box"><h4>Tides ${esc(dayLabel(dc.date))}</h4><div class="mono">${ex.map(x=>`${x[1]==="H"?"High":"Low"} ${x[0].slice(11,16)} (${x[2]>0?"+":""}${x[2]} m)`).join("<br>")||"–"}</div>${s.tide_note?`<span class="note">${esc(s.tide_note)}</span>`:""}<span class="note">Modelled sea level; check BOM/MSQ tide tables for official times.</span></div>`;
+  }
+  const xc = s.mode!=="ridge" && dc.peak.d850!=null ? `<div class="box"><h4>XC outlook</h4><div>Top of lift around <b>${dc.peak.top?topText(s,dc.peak.top):"–"}</b>${s.cta?` (CTA ${s.cta.toLocaleString()} ft)`:""}. Wind at ~1,500 m from the ${comp(dc.peak.d850)} at ${fmt(dc.peak.w850)} km/h, so drift heads ${comp((dc.peak.d850+180)%360)}.</div><span class="note">Lapse rate ${fmt(dc.peak.lapse,1)} °C/km (above 6.5 is lively). CAPE ${fmt(dc.peak.cape)} J/kg.</span></div>`:"";
+  const radar = s.lat>-26.9 && s.lon>152.6 ? "IDR663" : s.lon<152.5 ? "IDR503" : "IDR663";
+  const links=[
+    [s.url,"Site guide / club page"],
+    s.holfuy?[`https://holfuy.com/en/weather/${s.holfuy}`,"Live wind on launch (Holfuy)"]:null,
+    [`https://www.bom.gov.au/products/IDQ60801/IDQ60801.${s.bom.id}.shtml`,`BOM obs: ${s.bom.name}`],
+    [`https://www.bom.gov.au/products/${radar}.loop.shtml`,"BOM radar loop"],
+    [`https://www.windy.com/${s.lat}/${s.lon}?${s.lat},${s.lon},11`,"Windy"],
+    ["https://xcskies.com/","XC Skies"],
+    ["https://skysight.io/","SkySight (subscribers)"],
+  ].filter(Boolean);
+  return `<div class="facts">
+      <span class="chip">Launch ${s.height!=null?s.height+" m ASL":(s.elev!=null?"≈"+Math.round(s.elev)+" m (terrain)":"–")}</span>
+      <span class="chip">Soaring range ${s.wind[0]}–${s.wind[3]} km/h</span>
+      <span class="chip">${esc(s.club)}</span>
+      ${s.cta?`<span class="chip">CTA ${s.cta.toLocaleString()} ft</span>`:""}
+    </div>
+    ${s.note?`<div class="note">${esc(s.note)}</div>`:""}
+    <div class="table-scroll"><table class="hours"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+    <div class="cols">
+      ${xc}
+      <div class="box"><h4>Latest observation · ${esc(s.bom.name)}</h4>${obsHTML}</div>
+      ${tideHTML}
+      <div class="box"><h4>Check before you go</h4><div class="links">${links.map(([u,t])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("")}</div></div>
+    </div>`;
+}
+
+function renderLadder(){
+  document.getElementById("dayTitle").textContent = `Sites · ${dayLabel(S.day)}`;
+  let list=S.data.sites.map(s=>({s,dc:dayCalc(s,S.day)})).filter(x=>x.dc);
+  if(S.filter==="coast") list=list.filter(x=>x.s.mode==="ridge");
+  if(S.filter==="inland") list=list.filter(x=>x.s.mode!=="ridge");
+  if(S.sort) list.sort((a,b)=>b.dc.best-a.dc.best);
+  const el=document.getElementById("ladder");
+  el.innerHTML = list.length? list.map(x=>siteCard(x.s,x.dc)).join("") : `<div class="empty">No sites match this filter.</div>`;
+  el.querySelectorAll("details.site").forEach(d=>d.addEventListener("toggle",()=>{
+    const id=d.dataset.id;
+    if(d.open){ S.open.add(id); const s=S.data.sites.find(x=>x.id===id); d.querySelector(".detail").innerHTML=detailHTML(s,dayCalc(s,S.day)); }
+    else S.open.delete(id);
+  }));
+}
+
+
+const MAP = {"land": "M368.2,405.6L359.7,426.6L348.6,477.9L337.5,479.2L335.0,473.4L336.4,463.0L339.3,458.1L336.4,450.8L339.3,437.0L336.4,424.0L343.6,410.5L344.0,400.4L345.8,399.0L349.2,399.9L355.2,405.6L368.2,405.6ZM336.3,371.1L331.9,366.0L330.4,360.8L329.2,346.1L330.5,331.7L328.5,323.0L329.1,320.5L333.4,317.9L340.7,316.4L347.7,311.5L350.1,312.3L351.4,316.2L340.7,360.1L340.7,371.6L343.6,383.7L343.0,391.3L341.7,392.1L339.3,387.7L336.3,371.1ZM175.2,-131.8L176.2,-127.6L173.8,-124.6L169.0,-124.3L163.9,-126.0L161.6,-123.3L172.4,-120.4L176.3,-117.9L184.7,-108.3L188.8,-106.0L204.7,-103.0L213.7,-98.4L214.3,-107.0L216.6,-108.2L218.0,-107.1L219.5,-101.5L234.5,-97.5L238.3,-67.0L228.9,-60.4L225.3,-53.0L240.9,-62.1L244.7,-62.1L246.1,-58.5L239.7,-53.0L241.2,-50.5L245.5,-47.9L232.6,-32.9L231.1,-27.2L233.6,-13.2L233.3,-7.2L228.2,-6.1L230.3,-2.8L239.7,3.8L235.4,5.2L237.3,9.5L240.6,12.6L249.1,15.0L257.1,29.6L260.0,48.1L257.1,53.8L257.1,63.6L258.5,63.6L265.6,48.1L266.2,36.1L268.5,32.7L265.6,27.8L270.3,32.2L271.4,39.1L278.2,55.3L284.0,57.6L290.7,57.9L295.9,55.6L282.5,85.5L268.9,137.4L268.2,145.8L269.4,154.2L271.4,157.6L279.8,160.4L281.5,163.9L276.5,179.1L275.8,223.9L277.9,230.6L284.4,232.9L283.0,248.5L284.2,255.8L286.6,259.7L284.7,261.5L283.5,265.8L283.4,281.8L284.7,289.7L296.0,318.3L296.9,325.7L293.0,330.9L285.2,327.4L277.2,328.7L269.9,333.6L262.7,343.4L260.7,348.5L260.7,353.2L269.5,355.5L276.4,352.6L277.4,354.0L276.6,364.8L267.8,372.4L265.6,377.1L266.3,380.9L271.4,386.0L284.4,390.7L288.0,393.4L290.0,397.9L293.0,413.7L296.4,417.4L305.4,419.2L309.1,424.8L312.7,436.7L317.4,444.1L319.0,462.3L325.4,469.8L328.8,480.6L338.9,492.4L337.2,498.8L339.3,500.3L342.5,499.2L345.0,494.6L346.5,494.6L343.2,515.2L343.6,528.6L340.7,522.4L337.3,528.6L337.7,536.9L339.7,538.3L345.0,531.9L347.3,561.2L364.6,586.0L371.1,585.3L377.1,607.4L377.0,619.3L371.3,652.9L371.1,663.3L373.9,683.4L375.6,687.7L385.4,700.4L382.5,708.5L383.1,716.5L379.2,724.0L379.0,729.2L381.1,739.3L380.2,749.1L375.2,755.8L362.4,767.0L352.8,780.5L345.0,797.7L344.6,804.1L-126.3,804.1L-126.3,-141.9L163.8,-141.9L166.8,-137.0L175.2,-131.8ZM270.7,-2.0L274.0,5.2L273.7,13.7L270.2,20.5L264.3,23.0L252.5,6.8L253.1,-1.6L249.3,-12.8L249.8,-19.0L243.8,-20.9L241.3,-27.7L241.7,-35.0L249.7,-41.4L252.8,-62.9L260.0,-71.0L267.1,-87.7L264.5,-100.9L267.1,-106.8L264.1,-110.3L256.0,-112.7L255.7,-115.5L260.7,-122.1L287.2,-141.9L323.6,-141.9L308.9,-105.1L286.5,-56.0L270.2,-8.1L270.7,-2.0ZM251.3,-85.5L242.9,-99.7L244.7,-101.8L251.3,-93.7L254.0,-88.0L251.3,-85.5Z", "border": "M359.3,579.2L359.3,579.2M327.2,603.1L333.2,600.1L359.3,579.2M321.1,601.2L327.2,603.1M301.5,605.4L321.1,601.2M298.4,605.1L301.5,605.4M273.4,627.7L280.4,624.1L285.0,616.6L288.6,614.0L293.2,605.4L298.4,605.1M145.7,605.7L149.6,606.7L153.3,609.7L156.5,620.0L163.0,622.9M88.1,647.4L92.7,645.9L103.5,635.3L117.3,632.9L127.1,628.1L133.2,616.0L145.7,605.7M171.9,613.3L180.0,620.0L201.7,628.7M163.0,622.9L167.2,620.7L169.1,615.0L171.9,613.3M224.4,620.3L233.3,621.6L238.8,624.3L254.7,625.8M201.7,628.7L210.1,627.6L215.8,625.3L220.3,621.0L224.4,620.3M266.6,625.6L273.4,627.7M254.7,625.8L266.6,625.6M81.5,646.6L88.1,647.4M33.6,674.0L35.3,670.8L44.3,667.9L52.7,659.7L76.6,647.3L81.5,646.6", "H": 662.2, "lon0": 151.8, "lat0": -25.7, "C": 0.8902128046111265, "K": 236.48987601502864};
+const TOWNS=[["Brisbane",-27.47,153.03],["Gold Coast",-28.0,153.43],["Toowoomba",-27.56,151.95],["Gympie",-26.19,152.66],["Warwick",-28.21,152.03]];
+// display offsets (px) to separate clustered launches; leader line drawn back to the true spot
+const NUDGE={rainbow:[22,0],teewah:[24,0],sunrise:[24,0],cartwright:[30,-10],moffats:[34,6],kings:[30,28],buchys:[-18,-12],towers:[-16,14],hinchies:[-20,-6],beechmont:[10,14],tamborine:[6,-8],killarney:[0,0]};
+const SEA=new Set(["rainbow","teewah","sunrise","cartwright","moffats","kings"]);
+const proj=(lon,lat)=>[(lon-MAP.lon0)*MAP.C*MAP.K,(MAP.lat0-lat)*MAP.K];
+const pt=(cx,cy,r,deg)=>[cx+r*Math.sin(deg*Math.PI/180),cy-r*Math.cos(deg*Math.PI/180)];
+function arcPath(cx,cy,r,a,b){ if(b<a) b+=360; const [x1,y1]=pt(cx,cy,r,a),[x2,y2]=pt(cx,cy,r,b); return `M${x1.toFixed(1)},${y1.toFixed(1)}A${r},${r} 0 ${b-a>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)}`; }
+S.hour=null;
+function mapState(s){
+  const dc=dayCalc(s,S.day); if(!dc) return null;
+  if(S.hour==null) return {score:dc.best, verdict:dc.verdict, h:dc.peak, label:dc.verdict!=="no"?`${String(dc.start).padStart(2,"0")}–${String(dc.end).padStart(2,"0")}`:"–"};
+  const h=dc.hrs.find(x=>x.hr===S.hour); if(!h) return null;
+  return {score:h.score, verdict:h.score>=60?"go":h.score>=35?"maybe":"no", h, label:`${String(S.hour).padStart(2,"0")}:00`};
+}
+function renderMap(){
+  const svg=document.getElementById("map");
+  let g=`<path class="land" d="${MAP.land}"/><path class="border" d="${MAP.border}"/>`;
+  for(const [n,la,lo] of TOWNS){const [x,y]=proj(lo,la); g+=`<g class="town"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8"/><text x="${(x+(x<60?3:-3)).toFixed(1)}" y="${(y+9).toFixed(1)}" text-anchor="${x<60?"start":"end"}">${n}</text></g>`;}
+  const rows=[];
+  for(const s of S.data.sites){
+    const st=mapState(s); if(!st) continue;
+    const [tx,ty]=proj(s.lon,s.lat); const [dx,dy]=NUDGE[s.id]||[0,0]; const cx=tx+dx, cy=ty+dy;
+    let m="";
+    if(dx||dy) m+=`<line class="leader" x1="${tx.toFixed(1)}" y1="${ty.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${cy.toFixed(1)}"/><circle class="truept" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="1.6"/>`;
+    for(const [a,b] of s.dirs) m+=`<path class="arc" d="${arcPath(cx,cy,12.5,a,b)}"/>`;
+    const h=st.h;
+    if(h && h.wd!=null && h.ws!=null){
+      const len=6+Math.min(h.ws,40)*0.55; const r0=15; const [x1,y1]=pt(cx,cy,r0+len,h.wd), [x2,y2]=pt(cx,cy,r0,h.wd);
+      const [hx1,hy1]=pt(x2,y2,4.5,h.wd-28), [hx2,hy2]=pt(x2,y2,4.5,h.wd+28);
+      m+=`<line class="wind" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/><path class="windhead" d="M${x2.toFixed(1)},${y2.toFixed(1)}L${hx1.toFixed(1)},${hy1.toFixed(1)}L${hx2.toFixed(1)},${hy2.toFixed(1)}Z"/>`;
+    }
+    const left = cx>300 || s.id==="tamborine";
+    m+=`<circle class="b" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9"/><text class="s" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}">${st.score}</text>`;
+    const lx = SEA.has(s.id)? cx+13 : left? cx-13 : cx+13;
+    m+=`<text class="n" x="${lx.toFixed(1)}" y="${(cy+3).toFixed(1)}" text-anchor="${(!SEA.has(s.id)&&left)?"end":"start"}">${esc(s.name)}</text>`;
+    g+=`<g class="mk ${st.verdict}${SEA.has(s.id)?" sea":""}" data-site="${s.id}" tabindex="0" role="button" aria-label="${esc(s.name)}: ${verdictText[st.verdict]} ${st.score}${h&&h.ws!=null?`, wind ${comp(h.wd)} ${Math.round(h.ws)} km/h`:""}">${m}</g>`;
+    rows.push({s,st});
+  }
+  svg.innerHTML=g;
+  rows.sort((a,b)=>b.st.score-a.st.score);
+  document.getElementById("maplist").innerHTML=rows.map(({s,st})=>`<button type="button" data-site="${s.id}"><span class="sc ${st.verdict}">${st.score}</span><span>${esc(s.name)} <span class="w">${esc(st.label)}</span></span><span class="w">${st.h&&st.h.ws!=null?`${comp(st.h.wd)} ${Math.round(st.h.ws)}`:""}</span></button>`).join("");
+  document.getElementById("mapDay").textContent=`${dayLabel(S.day)} · ${S.hour==null?"best window per site":String(S.hour).padStart(2,"0")+":00"}`;
+}
+function openSite(id){
+  S.open.add(id); renderLadder();
+  const el=document.getElementById("site-"+id);
+  if(el) el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+}
+document.getElementById("map").addEventListener("click",e=>{const g=e.target.closest(".mk"); if(g) openSite(g.dataset.site);});
+document.getElementById("map").addEventListener("keydown",e=>{const g=e.target.closest(".mk"); if(g&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openSite(g.dataset.site);}});
+document.getElementById("maplist").addEventListener("click",e=>{const b=e.target.closest("button"); if(b) openSite(b.dataset.site);});
+document.getElementById("hourRange").addEventListener("input",e=>{
+  const v=+e.target.value; S.hour = v<6?null:v;
+  document.getElementById("hourOut").textContent = S.hour==null?"Best":String(S.hour).padStart(2,"0")+":00";
+  renderMap();
+});
+
+function renderAll(){ renderGrid(); renderMap(); renderLadder(); }
+
+document.getElementById("grid").addEventListener("click",e=>{
+  const b=e.target.closest(".cell"); if(!b) return;
+  S.day=b.dataset.day; S.open.add(b.dataset.site); renderAll();
+  const el=document.getElementById("site-"+b.dataset.site);
+  if(el) el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+});
+document.getElementById("filters").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.sort){ S.sort=!S.sort; b.setAttribute("aria-pressed",S.sort); }
+  else { S.filter=b.dataset.f; document.querySelectorAll("#filters [data-f]").forEach(x=>x.setAttribute("aria-pressed",x===b)); }
+  try{localStorage.setItem("sw-filter",S.filter);}catch(_){}
+  renderLadder();
+});
+
+(async function init(){
+  try{ const f=localStorage.getItem("sw-filter"); if(f){S.filter=f;document.querySelectorAll("#filters [data-f]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.f===f));} }catch(_){}
+  try{
+    const r=await fetch("forecast.json",{cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    S.data=await r.json();
+  }catch(err){
+    document.getElementById("status").innerHTML=`<span class="flag">Forecast data could not load (${esc(err.message)}). Reload the page; if it persists, ask Claude to refresh the data.</span>`;
+    document.getElementById("grid").innerHTML=`<tbody><tr><td class="empty">No forecast data yet.</td></tr></tbody>`;
+    return;
+  }
+  const ds=dates();
+  const nowH=+new Date().toLocaleString("en-AU",{hour:"numeric",hour12:false,timeZone:"Australia/Brisbane"});
+  S.day = (ds[0]===S.data.generated.slice(0,10) && nowH>=16 && ds[1]) ? ds[1] : ds[0];
+  renderStatus(); renderAll();
+})();
+</script>
+
+</body></html>
