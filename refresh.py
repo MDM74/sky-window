@@ -339,9 +339,17 @@ def fetch_tides(sites, tz):
 def fetch_obs():
     res = {}
     for prod, wmo in sorted({(STATES[s.get("state", "qld")][1], s["bom"][0]) for s in SITES}):
-        url = f"https://www.bom.gov.au/fwo/{prod}/{prod}.{wmo}.json"
+        # metro-area stations publish under the x60901 product, the rest of the state under x60801
+        d = None
+        for pr in (prod, prod.replace("60901", "60801")):
+            try:
+                d = get_json(f"https://www.bom.gov.au/fwo/{pr}/{pr}.{wmo}.json", tries=1)["observations"]["data"][:8]
+                break
+            except Exception as e:
+                err = e
         try:
-            d = get_json(url)["observations"]["data"][:8]
+            if d is None:
+                raise RuntimeError(err)
             res[wmo] = [dict(t=o.get("local_date_time_full"), dir=o.get("wind_dir"), ws=o.get("wind_spd_kmh"),
                              wg=o.get("gust_kmh"), temp=o.get("air_temp"), rh=o.get("rel_hum")) for o in d]
         except Exception as e:
