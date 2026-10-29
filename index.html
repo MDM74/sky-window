@@ -428,7 +428,7 @@ function stripHTML(dc){
 function keyline(s,dc){
   const p=dc.peak; const parts=[];
   if(dc.verdict!=="no") parts.push(`<span><b>${String(dc.start).padStart(2,"0")}:00–${String(dc.end).padStart(2,"0")}:00</b></span>`);
-  parts.push(`<span class="mono">${arrow(p.wd)} ${comp(p.wd)} ${W(p.ws)}${p.wg!=null?` g${W(p.wg)}`:""} ${WU()}</span>`);
+  parts.push(`<span class="mono">${arrow(p.wd)} ${comp(p.wd)} ${W(p.ws)}${p.wg!=null?` gusts ${W(p.wg)}`:""} ${WU()}</span>`);
   if(p.kind==="thermal"||s.mode==="thermal"){ parts.push(`<span>Lift to <b class="mono">${p.top?topText(s,p.top):"–"}</b></span>`); }
   if(p.dir.label && s.dirs.length>1) parts.push(`<span>${esc(p.dir.label)}</span>`);
   for(const f of dc.flags) parts.push(`<span class="flag">${esc(f)}</span>`);
@@ -469,7 +469,7 @@ function detailHTML(s,dc){
     const models=mk.map(k=>{const m=s.m[k];const l=m.wsl&&m.wsl[h.i]!=null;const sp=l?m.wsl[h.i]:m.ws[h.i], dd=l?m.wdl[h.i]:m.wd[h.i];return sp==null?"–":`${W(sp)}${comp(dd)}`}).join(" · ");
     return `<tr class="${winHrs.has(h.hr)?"best":""}"><td>${String(h.hr).padStart(2,"0")}:00</td>
       <td><span class="scorebar"><b style="width:${h.score}%;background:${col}"></b></span>${h.score}</td>
-      <td>${arrow(h.wd)}${comp(h.wd)} ${W(h.ws)}${h.wg!=null?` g${W(h.wg)}`:""} ${okTxt}</td>
+      <td>${arrow(h.wd)}${comp(h.wd)} ${W(h.ws)}${h.wg!=null?` gusts ${W(h.wg)}`:""} ${okTxt}</td>
       ${band?`<td class="models">${comp(h.wd10)} ${W(h.ws10)}</td>`:""}
       <td class="models">${models}</td>
       ${thermalCols?`<td>${h.top?topText(s,h.top):"–"}</td><td>${fmt(h.lapse,1)}</td><td>${h.w850!=null?`${comp(h.d850)} ${W(h.w850)}`:"–"}</td>`:""}
@@ -482,7 +482,7 @@ function detailHTML(s,dc){
   let obsHTML="<span class='note'>No recent observation available.</span>";
   if(ob.length){
     const o=ob[0]; const tt=o.t?`${o.t.slice(8,10)}:${o.t.slice(10,12)}`:"";
-    obsHTML=`<div class="mono">${esc(o.dir||"–")} ${W(o.ws)} g${W(o.wg)} ${WU()} · ${fmt(o.temp,1)}°C · ${fmt(o.rh)}% RH</div>
+    obsHTML=`<div class="mono">${esc(o.dir||"–")} ${W(o.ws)}${o.wg!=null?` gusts ${W(o.wg)}`:""} ${WU()} · ${fmt(o.temp,1)}°C · ${fmt(o.rh)}% RH</div>
       <span class="note">As at ${esc(tt)} on refresh. Trend: ${ob.slice(0,6).reverse().map(x=>`${x.dir||"–"} ${W(x.ws)}`).map(esc).join(" → ")}</span>`;
   }
   // tides
