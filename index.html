@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>Sky Window SEQ</title>
+<title>Sky Window</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -144,6 +144,13 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 @media (max-width:600px){.hdr-right{align-items:flex-start}}
+.states{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-top:-6px;overflow-x:auto}
+.states button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 14px 9px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:1px;white-space:nowrap;color:var(--muted)}
+.states button b{font-family:var(--f-display);font-size:1.15rem;letter-spacing:.01em;color:var(--ink);font-weight:600}
+.states button span{font-size:.74rem}
+.states button[aria-selected="true"]{border-bottom-color:var(--accent)}
+.states button[aria-selected="true"] b{font-weight:700}
+.states button:hover b{color:var(--accent)}
 .wk-none{font-size:.85rem;color:var(--muted);padding:8px 0}
 .map .land{fill:var(--landfill);stroke:var(--coast);stroke-width:.7}
 .map .border{fill:none;stroke:var(--muted);stroke-width:.8;stroke-dasharray:4 3;opacity:.7}
@@ -180,7 +187,7 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
 <div class="wrap">
   <header>
     <div class="brand">
-      <span class="eyebrow">South-East Queensland free flight</span>
+      <span class="eyebrow" id="eyebrow">Free-flight forecast</span>
       <h1>Sky Window</h1>
     </div>
     <div class="hdr-right">
@@ -191,6 +198,8 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
       </div>
     </div>
   </header>
+
+  <nav class="states" id="states" role="tablist" aria-label="Choose a state"></nav>
 
   <section class="weekend" aria-labelledby="wkTitle">
     <div class="week-head" style="padding:0">
@@ -221,12 +230,7 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
         <input type="range" id="hourRange" min="5" max="18" step="1" value="5" aria-describedby="hourOut">
         <output id="hourOut" for="hourRange">Best</output>
       </div>
-      <div class="zoom" id="zoom" role="group" aria-label="Zoom map to a region">
-        <button type="button" id="z-all" data-z="all" aria-pressed="true">All SEQ</button>
-        <button type="button" id="z-sun" data-z="sun" aria-pressed="false">Sunshine &amp; Cooloola</button>
-        <button type="button" id="z-gc" data-z="gc" aria-pressed="false">Gold Coast &amp; Scenic Rim</button>
-        <button type="button" id="z-dd" data-z="dd" aria-pressed="false">Darling Downs</button>
-      </div>
+      <div class="zoom" id="zoom" role="group" aria-label="Zoom map to a region"></div>
       <div class="legend"><span><i style="background:var(--go)"></i>Good</span><span><i style="background:var(--maybe)"></i>Marginal</span><span><i style="background:var(--no)"></i>Unlikely</span><span><i class="arcsw"></i>Flyable wind directions</span><span>Arrow: forecast wind, longer = stronger</span></div>
     </div>
     <div class="mapwrap">
@@ -386,8 +390,12 @@ function confText(r,date){
   return c;
 }
 
-function dates(){ return [...new Set(S.data.sites[0].t.map(t=>t.slice(0,10)))].filter(d=>{
-  const site=S.data.sites[0]; return site.t.some(t=>t.startsWith(d)&&+t.slice(11,13)>=9);
+const STATENAMES={qld:["Queensland","South-East Queensland free flight"],nsw:["New South Wales","New South Wales free flight"]};
+S.state="qld";
+const stateOf=s=>s.state||"qld";
+function stateSites(){ return S.data.sites.filter(s=>stateOf(s)===S.state); }
+function dates(){ const first=stateSites()[0]||S.data.sites[0]; return [...new Set(first.t.map(t=>t.slice(0,10)))].filter(d=>{
+  const site=first; return site.t.some(t=>t.startsWith(d)&&+t.slice(11,13)>=9);
 }).slice(0,7); }
 
 function renderStatus(){
@@ -395,17 +403,17 @@ function renderStatus(){
   const ageH=(Date.now()-g.getTime())/36e5;
   const when=g.toLocaleString("en-AU",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"Australia/Brisbane"});
   document.getElementById("status").innerHTML =
-    `<span>Updated ${esc(when)} AEST${ageH>7?` <span class="flag">(${Math.round(ageH)} h old)</span>`:""}</span>`+
+    `<span>Updated ${esc(when)} AEST${ageH>7?` <span class="flag">(${Math.round(ageH)} h old)</span>`:""}${S.state==="nsw"?` · NSW times in ${esc(new Date().toLocaleTimeString("en-AU",{timeZone:"Australia/Sydney",timeZoneName:"short"}).split(" ").pop())}`:""}</span>`+
     S.data.models.map(m=>`<span class="chip" title="${esc(m.id)}"><span class="dot${m.ok?"":" off"}"></span>${esc(m.label)}</span>`).join("");
 }
 
 function renderGrid(){
   const ds=dates();
-  const regions=[...new Set(S.data.sites.map(s=>s.region))];
+  const regions=[...new Set(stateSites().map(s=>s.region))];
   let h=`<thead><tr><th></th>${ds.map(d=>{const dt=new Date(d+"T12:00:00+10:00");return `<th class="${d===S.day?"sel":""}">${esc(dayLabel(d,true))}<small>${dt.getDate()}</small></th>`}).join("")}</tr></thead><tbody>`;
   for(const r of regions){
     h+=`<tr class="region-row"><td colspan="${ds.length+1}">${esc(r)}</td></tr>`;
-    for(const s of S.data.sites.filter(x=>x.region===r)){
+    for(const s of stateSites().filter(x=>x.region===r)){
       h+=`<tr><td class="name" title="${esc(s.name)}">${esc(s.name)}</td>`;
       for(const d of ds){
         const dc=dayCalc(s,d);
@@ -492,12 +500,12 @@ function detailHTML(s,dc){
     tideHTML=`<div class="box"><h4>Tides ${esc(dayLabel(dc.date))}</h4><div class="mono">${ex.map(x=>`${x[1]==="H"?"High":"Low"} ${x[0].slice(11,16)} (${x[2]>0?"+":""}${x[2]} m)`).join("<br>")||"–"}</div>${s.tide_note?`<span class="note">${esc(s.tide_note)}</span>`:""}<span class="note">Modelled sea level; check BOM/MSQ tide tables for official times.</span></div>`;
   }
   const xc = s.mode!=="ridge" && dc.peak.d850!=null ? `<div class="box"><h4>XC outlook</h4><div>Top of lift around <b>${dc.peak.top?topText(s,dc.peak.top):"–"}</b>${dc.peak.usable!=null&&s.height!=null?`, roughly ${Hft(dc.peak.usable*3.281)} above launch`:""}${s.cta?` (CTA ${s.cta.toLocaleString()} ft)`:""}. Wind at about ${Hm(1500)} from the ${comp(dc.peak.d850)} at ${W(dc.peak.w850)} ${WU()}, so drift heads ${comp((dc.peak.d850+180)%360)}.</div><span class="note">Lapse rate ${fmt(dc.peak.lapse,1)} °C/km (above 6.5 is lively). CAPE ${fmt(dc.peak.cape)} J/kg.</span></div>`:"";
-  const radar = s.lat>-26.9 && s.lon>152.6 ? "IDR663" : s.lon<152.5 ? "IDR503" : "IDR663";
+  const radar = s.radar || (stateOf(s)==="qld" ? (s.lat>-26.9 && s.lon>152.6 ? "IDR663" : s.lon<152.5 ? "IDR503" : "IDR663") : null);
   const links=[
     [s.url,"Site guide / club page"],
     s.holfuy?[`https://holfuy.com/en/weather/${s.holfuy}`,"Live wind on launch (Holfuy)"]:null,
-    [`https://www.bom.gov.au/products/IDQ60801/IDQ60801.${s.bom.id}.shtml`,`BOM obs: ${s.bom.name}`],
-    [`https://www.bom.gov.au/products/${radar}.loop.shtml`,"BOM radar loop"],
+    [`https://www.bom.gov.au/products/${s.bom.page||"IDQ60801"}/${s.bom.page||"IDQ60801"}.${s.bom.id}.shtml`,`BOM obs: ${s.bom.name}`],
+    [radar?`https://www.bom.gov.au/products/${radar}.loop.shtml`:"https://www.bom.gov.au/australia/radar/", "BOM radar loop"],
     [`https://www.windy.com/${s.lat}/${s.lon}?${s.lat},${s.lon},11`,"Windy"],
     ["https://xcskies.com/","XC Skies"],
     ["https://skysight.io/","SkySight (subscribers)"],
@@ -521,7 +529,7 @@ function detailHTML(s,dc){
 
 function renderLadder(){
   document.getElementById("dayTitle").textContent = `Sites · ${dayLabel(S.day)}`;
-  let list=S.data.sites.map(s=>({s,dc:dayCalc(s,S.day)})).filter(x=>x.dc);
+  let list=stateSites().map(s=>({s,dc:dayCalc(s,S.day)})).filter(x=>x.dc);
   if(S.filter==="coast") list=list.filter(x=>x.s.mode==="ridge");
   if(S.filter==="inland") list=list.filter(x=>x.s.mode!=="ridge");
   if(S.sort) list.sort((a,b)=>b.dc.best-a.dc.best);
@@ -535,19 +543,25 @@ function renderLadder(){
 }
 
 
-const MAP = {"land": "M368.2,405.6L359.7,426.6L348.6,477.9L337.5,479.2L335.0,473.4L336.4,463.0L339.3,458.1L336.4,450.8L339.3,437.0L336.4,424.0L343.6,410.5L344.0,400.4L345.8,399.0L349.2,399.9L355.2,405.6L368.2,405.6ZM336.3,371.1L331.9,366.0L330.4,360.8L329.2,346.1L330.5,331.7L328.5,323.0L329.1,320.5L333.4,317.9L340.7,316.4L347.7,311.5L350.1,312.3L351.4,316.2L340.7,360.1L340.7,371.6L343.6,383.7L343.0,391.3L341.7,392.1L339.3,387.7L336.3,371.1ZM175.2,-131.8L176.2,-127.6L173.8,-124.6L169.0,-124.3L163.9,-126.0L161.6,-123.3L172.4,-120.4L176.3,-117.9L184.7,-108.3L188.8,-106.0L204.7,-103.0L213.7,-98.4L214.3,-107.0L216.6,-108.2L218.0,-107.1L219.5,-101.5L234.5,-97.5L238.3,-67.0L228.9,-60.4L225.3,-53.0L240.9,-62.1L244.7,-62.1L246.1,-58.5L239.7,-53.0L241.2,-50.5L245.5,-47.9L232.6,-32.9L231.1,-27.2L233.6,-13.2L233.3,-7.2L228.2,-6.1L230.3,-2.8L239.7,3.8L235.4,5.2L237.3,9.5L240.6,12.6L249.1,15.0L257.1,29.6L260.0,48.1L257.1,53.8L257.1,63.6L258.5,63.6L265.6,48.1L266.2,36.1L268.5,32.7L265.6,27.8L270.3,32.2L271.4,39.1L278.2,55.3L284.0,57.6L290.7,57.9L295.9,55.6L282.5,85.5L268.9,137.4L268.2,145.8L269.4,154.2L271.4,157.6L279.8,160.4L281.5,163.9L276.5,179.1L275.8,223.9L277.9,230.6L284.4,232.9L283.0,248.5L284.2,255.8L286.6,259.7L284.7,261.5L283.5,265.8L283.4,281.8L284.7,289.7L296.0,318.3L296.9,325.7L293.0,330.9L285.2,327.4L277.2,328.7L269.9,333.6L262.7,343.4L260.7,348.5L260.7,353.2L269.5,355.5L276.4,352.6L277.4,354.0L276.6,364.8L267.8,372.4L265.6,377.1L266.3,380.9L271.4,386.0L284.4,390.7L288.0,393.4L290.0,397.9L293.0,413.7L296.4,417.4L305.4,419.2L309.1,424.8L312.7,436.7L317.4,444.1L319.0,462.3L325.4,469.8L328.8,480.6L338.9,492.4L337.2,498.8L339.3,500.3L342.5,499.2L345.0,494.6L346.5,494.6L343.2,515.2L343.6,528.6L340.7,522.4L337.3,528.6L337.7,536.9L339.7,538.3L345.0,531.9L347.3,561.2L364.6,586.0L371.1,585.3L377.1,607.4L377.0,619.3L371.3,652.9L371.1,663.3L373.9,683.4L375.6,687.7L385.4,700.4L382.5,708.5L383.1,716.5L379.2,724.0L379.0,729.2L381.1,739.3L380.2,749.1L375.2,755.8L362.4,767.0L352.8,780.5L345.0,797.7L344.6,804.1L-126.3,804.1L-126.3,-141.9L163.8,-141.9L166.8,-137.0L175.2,-131.8ZM270.7,-2.0L274.0,5.2L273.7,13.7L270.2,20.5L264.3,23.0L252.5,6.8L253.1,-1.6L249.3,-12.8L249.8,-19.0L243.8,-20.9L241.3,-27.7L241.7,-35.0L249.7,-41.4L252.8,-62.9L260.0,-71.0L267.1,-87.7L264.5,-100.9L267.1,-106.8L264.1,-110.3L256.0,-112.7L255.7,-115.5L260.7,-122.1L287.2,-141.9L323.6,-141.9L308.9,-105.1L286.5,-56.0L270.2,-8.1L270.7,-2.0ZM251.3,-85.5L242.9,-99.7L244.7,-101.8L251.3,-93.7L254.0,-88.0L251.3,-85.5Z", "border": "M359.3,579.2L359.3,579.2M327.2,603.1L333.2,600.1L359.3,579.2M321.1,601.2L327.2,603.1M301.5,605.4L321.1,601.2M298.4,605.1L301.5,605.4M273.4,627.7L280.4,624.1L285.0,616.6L288.6,614.0L293.2,605.4L298.4,605.1M145.7,605.7L149.6,606.7L153.3,609.7L156.5,620.0L163.0,622.9M88.1,647.4L92.7,645.9L103.5,635.3L117.3,632.9L127.1,628.1L133.2,616.0L145.7,605.7M171.9,613.3L180.0,620.0L201.7,628.7M163.0,622.9L167.2,620.7L169.1,615.0L171.9,613.3M224.4,620.3L233.3,621.6L238.8,624.3L254.7,625.8M201.7,628.7L210.1,627.6L215.8,625.3L220.3,621.0L224.4,620.3M266.6,625.6L273.4,627.7M254.7,625.8L266.6,625.6M81.5,646.6L88.1,647.4M33.6,674.0L35.3,670.8L44.3,667.9L52.7,659.7L76.6,647.3L81.5,646.6", "H": 662.2, "lon0": 151.8, "lat0": -25.7, "C": 0.8902128046111265, "K": 236.48987601502864};
-const TOWNS=[["Brisbane",-27.47,153.03],["Gold Coast",-28.0,153.43],["Toowoomba",-27.56,151.95],["Gympie",-26.19,152.66],["Warwick",-28.21,152.03]];
+const MAPS = {qld: {"land": "M368.2,405.6L359.7,426.6L348.6,477.9L337.5,479.2L335.0,473.4L336.4,463.0L339.3,458.1L336.4,450.8L339.3,437.0L336.4,424.0L343.6,410.5L344.0,400.4L345.8,399.0L349.2,399.9L355.2,405.6L368.2,405.6ZM336.3,371.1L331.9,366.0L330.4,360.8L329.2,346.1L330.5,331.7L328.5,323.0L329.1,320.5L333.4,317.9L340.7,316.4L347.7,311.5L350.1,312.3L351.4,316.2L340.7,360.1L340.7,371.6L343.6,383.7L343.0,391.3L341.7,392.1L339.3,387.7L336.3,371.1ZM175.2,-131.8L176.2,-127.6L173.8,-124.6L169.0,-124.3L163.9,-126.0L161.6,-123.3L172.4,-120.4L176.3,-117.9L184.7,-108.3L188.8,-106.0L204.7,-103.0L213.7,-98.4L214.3,-107.0L216.6,-108.2L218.0,-107.1L219.5,-101.5L234.5,-97.5L238.3,-67.0L228.9,-60.4L225.3,-53.0L240.9,-62.1L244.7,-62.1L246.1,-58.5L239.7,-53.0L241.2,-50.5L245.5,-47.9L232.6,-32.9L231.1,-27.2L233.6,-13.2L233.3,-7.2L228.2,-6.1L230.3,-2.8L239.7,3.8L235.4,5.2L237.3,9.5L240.6,12.6L249.1,15.0L257.1,29.6L260.0,48.1L257.1,53.8L257.1,63.6L258.5,63.6L265.6,48.1L266.2,36.1L268.5,32.7L265.6,27.8L270.3,32.2L271.4,39.1L278.2,55.3L284.0,57.6L290.7,57.9L295.9,55.6L282.5,85.5L268.9,137.4L268.2,145.8L269.4,154.2L271.4,157.6L279.8,160.4L281.5,163.9L276.5,179.1L275.8,223.9L277.9,230.6L284.4,232.9L283.0,248.5L284.2,255.8L286.6,259.7L284.7,261.5L283.5,265.8L283.4,281.8L284.7,289.7L296.0,318.3L296.9,325.7L293.0,330.9L285.2,327.4L277.2,328.7L269.9,333.6L262.7,343.4L260.7,348.5L260.7,353.2L269.5,355.5L276.4,352.6L277.4,354.0L276.6,364.8L267.8,372.4L265.6,377.1L266.3,380.9L271.4,386.0L284.4,390.7L288.0,393.4L290.0,397.9L293.0,413.7L296.4,417.4L305.4,419.2L309.1,424.8L312.7,436.7L317.4,444.1L319.0,462.3L325.4,469.8L328.8,480.6L338.9,492.4L337.2,498.8L339.3,500.3L342.5,499.2L345.0,494.6L346.5,494.6L343.2,515.2L343.6,528.6L340.7,522.4L337.3,528.6L337.7,536.9L339.7,538.3L345.0,531.9L347.3,561.2L364.6,586.0L371.1,585.3L377.1,607.4L377.0,619.3L371.3,652.9L371.1,663.3L373.9,683.4L375.6,687.7L385.4,700.4L382.5,708.5L383.1,716.5L379.2,724.0L379.0,729.2L381.1,739.3L380.2,749.1L375.2,755.8L362.4,767.0L352.8,780.5L345.0,797.7L344.6,804.1L-126.3,804.1L-126.3,-141.9L163.8,-141.9L166.8,-137.0L175.2,-131.8ZM270.7,-2.0L274.0,5.2L273.7,13.7L270.2,20.5L264.3,23.0L252.5,6.8L253.1,-1.6L249.3,-12.8L249.8,-19.0L243.8,-20.9L241.3,-27.7L241.7,-35.0L249.7,-41.4L252.8,-62.9L260.0,-71.0L267.1,-87.7L264.5,-100.9L267.1,-106.8L264.1,-110.3L256.0,-112.7L255.7,-115.5L260.7,-122.1L287.2,-141.9L323.6,-141.9L308.9,-105.1L286.5,-56.0L270.2,-8.1L270.7,-2.0ZM251.3,-85.5L242.9,-99.7L244.7,-101.8L251.3,-93.7L254.0,-88.0L251.3,-85.5Z", "border": "M359.3,579.2L359.3,579.2M327.2,603.1L333.2,600.1L359.3,579.2M321.1,601.2L327.2,603.1M301.5,605.4L321.1,601.2M298.4,605.1L301.5,605.4M273.4,627.7L280.4,624.1L285.0,616.6L288.6,614.0L293.2,605.4L298.4,605.1M145.7,605.7L149.6,606.7L153.3,609.7L156.5,620.0L163.0,622.9M88.1,647.4L92.7,645.9L103.5,635.3L117.3,632.9L127.1,628.1L133.2,616.0L145.7,605.7M171.9,613.3L180.0,620.0L201.7,628.7M163.0,622.9L167.2,620.7L169.1,615.0L171.9,613.3M224.4,620.3L233.3,621.6L238.8,624.3L254.7,625.8M201.7,628.7L210.1,627.6L215.8,625.3L220.3,621.0L224.4,620.3M266.6,625.6L273.4,627.7M254.7,625.8L266.6,625.6M81.5,646.6L88.1,647.4M33.6,674.0L35.3,670.8L44.3,667.9L52.7,659.7L76.6,647.3L81.5,646.6", "H": 662.2, "lon0": 151.8, "lat0": -25.7, "C": 0.8902128046111265, "K": 236.48987601502864},
+  nsw: {"land": "M350.7,-55.0L350.0,-50.0L350.6,-46.1L348.9,-43.1L348.4,-36.6L343.1,-26.8L343.2,-16.6L342.0,-12.2L337.7,-4.1L338.5,-1.4L337.3,2.3L333.8,8.7L332.7,13.5L330.1,18.9L328.0,32.4L325.5,42.3L326.5,43.9L326.9,52.1L328.8,56.0L331.0,57.7L332.4,56.6L333.8,58.9L333.2,62.6L330.3,67.4L329.8,71.0L331.3,73.1L331.4,75.6L327.3,80.0L324.9,84.2L324.8,87.5L323.3,91.5L324.1,93.0L324.6,99.2L321.0,103.7L319.8,106.5L319.7,109.0L321.2,110.7L321.7,113.1L321.2,115.1L313.9,123.5L314.3,126.4L313.2,128.9L314.2,130.8L309.3,136.6L310.5,138.1L310.3,139.4L305.6,145.2L305.0,148.6L305.9,150.1L294.6,160.1L289.5,169.6L290.2,172.3L288.0,174.8L286.5,181.1L287.1,182.6L291.0,185.4L291.4,186.7L287.8,192.8L287.9,195.8L290.2,196.6L287.4,205.3L287.5,207.0L289.0,208.4L277.7,213.0L269.0,219.8L268.2,222.7L264.2,224.4L260.6,228.9L260.2,230.5L262.8,233.2L258.8,231.9L256.1,229.9L253.8,231.9L249.9,233.3L252.4,235.3L260.4,235.9L261.0,236.4L260.0,240.0L257.2,239.9L253.8,242.6L249.7,241.8L243.7,243.1L234.7,247.3L228.5,252.3L228.9,254.8L223.5,259.9L223.2,264.1L220.7,265.4L218.0,268.6L214.4,281.3L209.7,286.4L209.2,288.4L210.3,290.1L209.7,291.1L205.3,294.5L207.4,289.7L205.4,288.1L200.3,292.3L201.6,294.6L199.4,295.2L200.1,297.2L202.0,298.0L203.7,295.7L204.5,296.1L204.4,297.7L202.9,301.0L199.6,305.1L200.1,306.7L199.1,307.8L199.8,310.0L198.2,310.8L198.6,312.2L197.9,314.0L192.9,314.4L191.3,316.0L188.5,315.9L186.4,317.3L185.0,317.3L183.3,313.3L182.1,314.7L182.4,318.4L183.9,319.3L181.7,321.9L183.6,321.6L186.3,318.4L187.7,318.2L188.6,319.0L187.1,324.6L187.4,325.8L188.5,324.7L189.8,320.3L191.1,322.7L188.5,330.1L188.1,333.3L189.2,335.3L188.1,343.0L185.0,343.2L183.4,346.0L184.1,347.7L185.3,347.9L186.8,346.0L187.3,347.3L185.6,353.9L186.2,355.3L183.6,360.3L179.7,356.0L178.1,356.4L176.7,360.0L171.9,360.0L171.0,361.3L175.0,363.1L176.4,361.6L182.2,362.3L182.1,363.9L176.7,365.3L175.4,367.6L174.4,368.0L177.7,368.6L177.1,370.7L165.5,379.5L160.7,385.5L157.1,392.1L157.4,395.3L155.8,399.6L155.4,403.8L156.6,407.3L154.9,408.8L152.9,413.0L151.4,412.6L152.4,410.8L151.9,409.9L150.3,409.6L147.0,413.3L147.9,414.5L150.4,414.6L154.9,418.4L156.5,418.6L153.8,419.0L152.7,420.9L150.8,433.1L149.7,436.1L145.2,438.4L143.1,443.4L141.0,445.0L145.2,447.6L144.0,449.2L142.5,449.3L145.9,451.9L145.0,456.0L146.6,457.6L151.1,458.7L150.6,464.7L147.5,468.0L145.1,464.9L146.4,462.1L145.4,460.0L145.9,458.7L144.3,457.9L138.4,459.8L136.9,464.6L138.5,465.0L139.2,469.3L140.5,470.4L144.2,469.3L143.6,474.6L141.6,474.8L139.2,476.6L137.5,474.3L133.7,474.7L126.9,478.0L125.7,481.3L121.6,487.0L121.8,493.5L118.4,497.0L115.1,502.6L114.8,510.6L112.0,513.5L105.4,527.5L104.0,528.3L100.6,526.6L97.2,527.9L99.4,530.3L101.1,535.0L101.1,538.3L100.6,539.3L97.2,540.6L93.9,544.6L95.0,550.3L93.8,560.6L90.3,559.2L88.8,560.6L88.3,562.6L90.0,561.9L92.7,564.0L93.3,565.6L91.7,569.3L91.9,574.0L-49.0,574.0L-49.0,-58.4L352.6,-58.4L350.7,-55.0Z", "border": "M28.6,492.2L31.2,491.1L32.9,488.7L20.4,482.9L19.8,480.0L15.9,478.2L15.1,474.1L10.4,470.8M10.4,470.8L8.4,471.4L-14.2,487.7L-16.0,490.3L-15.9,493.8L-18.7,505.2L-17.7,513.7L-18.6,520.6L-17.0,522.8L-16.7,526.6L-12.4,530.2M22.7,491.2L28.6,492.2M19.0,494.4L21.5,491.5L22.7,491.2M16.9,493.4L19.0,494.4M3.5,546.7L7.9,541.0L8.7,537.7L7.8,531.7L8.5,526.8L7.1,516.6L8.0,514.8L10.3,513.8L12.3,507.6L11.2,503.5L12.1,501.6L11.6,499.5L15.2,494.3L16.9,493.4M-10.1,528.0L-8.9,529.4L-8.1,536.9L-5.7,542.4L3.5,546.7M-12.4,530.2L-10.1,528.0M139.1,468.9L136.6,469.3L133.6,471.3L131.7,475.4", "H": 515.6, "lon0": 149.0, "lat0": -30.3, "C": 0.8391455357628332, "K": 97.28068562864422}};
+let MAP = MAPS.qld;
+const TOWNSET={qld:[["Brisbane",-27.47,153.03],["Gold Coast",-28.0,153.43],["Toowoomba",-27.56,151.95],["Gympie",-26.19,152.66],["Warwick",-28.21,152.03]],
+  nsw:[["Sydney",-33.87,151.21],["Newcastle",-32.93,151.78],["Port Macquarie",-31.43,152.91],["Tamworth",-31.09,150.93],["Canberra",-35.28,149.13],["Katoomba",-33.71,150.31],["Goulburn",-34.75,149.72]]};
 // display offsets (px) to separate clustered launches; leader line drawn back to the true spot
-const NUDGE={rainbow:[22,0],teewah:[24,0],sunrise:[24,0],cartwright:[30,-10],moffats:[34,6],kings:[30,28],buchys:[-18,-12],towers:[-16,14],hinchies:[-20,-6],beechmont:[10,14],tamborine:[6,-8],killarney:[0,0]};
-const SEA=new Set(["rainbow","teewah","sunrise","cartwright","moffats","kings"]);
+const NUDGE={rainbow:[22,0],teewah:[24,0],sunrise:[24,0],cartwright:[30,-10],moffats:[34,6],kings:[30,28],buchys:[-18,-12],towers:[-16,14],hinchies:[-20,-6],beechmont:[10,14],tamborine:[6,-8],killarney:[0,0],northbrother:[-22,-6],bonnyhills:[18,10]};
+const SEA=new Set(["rainbow","teewah","sunrise","cartwright","moffats","kings","stanwell","longreef","hill60","catho","merewether","bonnyhills","crescent"]);
 const proj=(lon,lat)=>[(lon-MAP.lon0)*MAP.C*MAP.K,(MAP.lat0-lat)*MAP.K];
 const pt=(cx,cy,r,deg)=>[cx+r*Math.sin(deg*Math.PI/180),cy-r*Math.cos(deg*Math.PI/180)];
 function arcPath(cx,cy,r,a,b){ if(b<a) b+=360; const [x1,y1]=pt(cx,cy,r,a),[x2,y2]=pt(cx,cy,r,b); return `M${x1.toFixed(1)},${y1.toFixed(1)}A${r},${r} 0 ${b-a>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)}`; }
 S.hour=null; S.zoom="all";
 // region views: [west lon, east lon, north lat, south lat]
-const REGIONS={all:null, sun:[152.22,153.62,-25.74,-26.98], gc:[152.55,153.62,-27.72,-28.42], dd:[151.82,152.62,-27.45,-28.42]};
+const REGIONSET={
+  qld:[["all","All SEQ",null],["sun","Sunshine & Cooloola",[152.22,153.62,-25.74,-26.98]],["gc","Gold Coast & Scenic Rim",[152.55,153.62,-27.72,-28.42]],["dd","Darling Downs",[151.82,152.62,-27.45,-28.42]]],
+  nsw:[["all","All NSW",null],["syd","Sydney, Illawarra & Blue Mtns",[150.05,151.78,-33.45,-34.62]],["hunter","Hunter & Central Coast",[151.25,152.05,-32.72,-33.42]],["mnc","Mid North Coast",[152.35,153.35,-30.95,-31.95]]]};
+const regionBounds=z=>{const r=(REGIONSET[S.state]||[]).find(x=>x[0]===z); return r?r[2]:null;};
 function viewBox(){
-  const full=[0,0,400,MAP.H]; const r=REGIONS[S.zoom]; if(!r) return full;
+  const full=[0,0,400,MAP.H]; const r=regionBounds(S.zoom); if(!r) return full;
   const [x0,y0]=proj(r[0],r[2]), [x1,y1]=proj(r[1],r[3]);
   const w=x1-x0, hgt=y1-y0; // each region gets its own shape; the map's height follows it
   return [x0, y0, w, hgt];
@@ -566,9 +580,9 @@ function renderMap(){
   const k=Math.pow(vb[2]/400,0.7); // markers shrink less than the map grows, so zooming makes them bigger but less crowded
   const sc=(x,y)=>`transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${k.toFixed(3)}) translate(${(-x).toFixed(1)} ${(-y).toFixed(1)})"`;
   let g=`<path class="land" d="${MAP.land}"/><path class="border" d="${MAP.border}"/>`;
-  for(const [n,la,lo] of TOWNS){const [x,y]=proj(lo,la); const left=x<60||n==="Gold Coast"||S.zoom!=="all"; g+=`<g class="town" ${sc(x,y)}><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8"/><text x="${(x+(left?3:-3)).toFixed(1)}" y="${(y+9).toFixed(1)}" text-anchor="${left?"start":"end"}">${n}</text></g>`;}
+  for(const [n,la,lo] of (TOWNSET[S.state]||[])){const [x,y]=proj(lo,la); const left=x<60||n==="Gold Coast"||S.zoom!=="all"; g+=`<g class="town" ${sc(x,y)}><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8"/><text x="${(x+(left?3:-3)).toFixed(1)}" y="${(y+9).toFixed(1)}" text-anchor="${left?"start":"end"}">${n}</text></g>`;}
   const rows=[];
-  for(const s of S.data.sites){
+  for(const s of stateSites()){
     const st=mapState(s); if(!st) continue;
     const [tx,ty]=proj(s.lon,s.lat); const [dx,dy]=NUDGE[s.id]||[0,0]; const cx=tx+dx*k, cy=ty+dy*k;
     rows.push({s,st}); if(!inView(tx,ty)) continue;
@@ -604,7 +618,7 @@ document.getElementById("maplist").addEventListener("click",e=>{const b=e.target
 document.getElementById("zoom").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
   S.zoom=b.dataset.z; document.querySelectorAll("#zoom button").forEach(x=>x.setAttribute("aria-pressed",x===b));
-  try{localStorage.setItem("sw-zoom",S.zoom);}catch(_){}
+  try{localStorage.setItem("sw-zoom-"+S.state,S.zoom);}catch(_){}
   renderMap();
 });
 document.getElementById("hourRange").addEventListener("input",e=>{
@@ -634,7 +648,7 @@ function renderWeekend(){
   document.getElementById("wkNote").textContent = out>=2 ? `${out} days out: expect changes, re-check Friday evening.` : "Based on the latest model runs.";
   let best=null; let html="";
   for(const d of days){
-    const ranked=S.data.sites.map(s=>({s,dc:dayCalc(s,d)})).filter(x=>x.dc).sort((a,b)=>b.dc.best-a.dc.best);
+    const ranked=stateSites().map(s=>({s,dc:dayCalc(s,d)})).filter(x=>x.dc).sort((a,b)=>b.dc.best-a.dc.best);
     const good=ranked.filter(x=>x.dc.verdict!=="no").slice(0,4);
     if(ranked[0] && (!best || ranked[0].dc.best>best.dc.best)) best={...ranked[0],d};
     const label=new Date(d+"T12:00:00+10:00").toLocaleDateString("en-AU",DAYFMT);
@@ -660,6 +674,30 @@ document.getElementById("wkDays").addEventListener("click",e=>{
 });
 
 function renderAll(){ renderGrid(); renderMap(); renderLadder(); }
+function availableStates(){ return Object.keys(STATENAMES).filter(k=>S.data.sites.some(s=>stateOf(s)===k)); }
+function renderStates(){
+  document.getElementById("states").innerHTML=availableStates().map(k=>{
+    const n=S.data.sites.filter(s=>stateOf(s)===k).length;
+    return `<button type="button" role="tab" id="st-${k}" data-state="${k}" aria-selected="${k===S.state}"><b>${STATENAMES[k][0]}</b><span>${n} sites</span></button>`;}).join("");
+}
+function renderZoom(){
+  document.getElementById("zoom").innerHTML=(REGIONSET[S.state]||[]).map(([z,label])=>`<button type="button" id="z-${z}" data-z="${z}" aria-pressed="${z===S.zoom}">${esc(label)}</button>`).join("");
+}
+function setState(st){
+  if(!availableStates().includes(st)) st="qld";
+  S.state=st; MAP=MAPS[st]||MAPS.qld; S.open.clear();
+  let z="all"; try{ const v=localStorage.getItem("sw-zoom-"+st); if(v&&regionBounds(v)!==null) z=v; }catch(_){}
+  S.zoom=z;
+  try{localStorage.setItem("sw-state",st);}catch(_){}
+  document.getElementById("eyebrow").textContent=STATENAMES[st][1];
+  const ds=dates(); if(!ds.includes(S.day)) S.day=ds[0];
+  renderStates(); renderZoom(); renderStatus(); renderWeekend(); renderAll();
+}
+document.getElementById("states").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b||b.dataset.state===S.state) return;
+  if(location.hash!=="#"+b.dataset.state) location.hash=b.dataset.state; else setState(b.dataset.state);
+});
+window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1); if(S.data&&STATENAMES[h]&&h!==S.state) setState(h); });
 function syncUnits(){ document.querySelectorAll(".units button").forEach(b=>b.setAttribute("aria-pressed",U[b.dataset.u]===b.dataset.v)); }
 document.querySelector(".units").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
@@ -695,11 +733,13 @@ document.getElementById("filters").addEventListener("click",e=>{
     document.getElementById("grid").innerHTML=`<tbody><tr><td class="empty">No forecast data yet.</td></tr></tbody>`;
     return;
   }
+  { const hs=location.hash.slice(1); let st0=STATENAMES[hs]?hs:null; if(!st0){ try{ st0=localStorage.getItem("sw-state"); }catch(_){} } if(st0&&availableStates().includes(st0)) S.state=st0; }
   const ds=dates();
   const nowH=+new Date().toLocaleString("en-AU",{hour:"numeric",hour12:false,timeZone:"Australia/Brisbane"});
   S.day = (ds[0]===S.data.generated.slice(0,10) && nowH>=16 && ds[1]) ? ds[1] : ds[0];
-  try{ const z=localStorage.getItem("sw-zoom"); if(z&&z in REGIONS){S.zoom=z;document.querySelectorAll("#zoom button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.z===z));} }catch(_){}
-  renderStatus(); renderWeekend(); renderAll();
+  let st=location.hash.slice(1);
+  if(!STATENAMES[st]){ try{ st=localStorage.getItem("sw-state")||"qld"; }catch(_){ st="qld"; } }
+  setState(st);
 })();
 </script>
 

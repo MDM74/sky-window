@@ -1,6 +1,6 @@
 # Sky Window SEQ
 
-Paragliding forecast dashboard for South-East Queensland sites. `index.html` is the page,
+Paragliding forecast dashboard for South-East Queensland and New South Wales sites. `index.html` is the page,
 `forecast.json` is the data, and `refresh.py` rebuilds the data from Open-Meteo (ECMWF, GFS,
 ICON, UK Met Office), Open-Meteo Marine tides and Bureau of Meteorology observations.
 A GitHub Action runs `refresh.py` every 3 hours and commits the new `forecast.json`.

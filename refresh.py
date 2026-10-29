@@ -3,7 +3,7 @@
 
 Pulls 7-day hourly forecasts from four global weather models (via Open-Meteo),
 tide heights (Open-Meteo marine) and the latest Bureau of Meteorology station
-observations for each South-East Queensland flying site, then writes
+observations for each flying site (South-East Queensland and New South Wales), then writes
 forecast.json for the dashboard page to read.
 
 Run:  python3 refresh.py [output_path]
@@ -14,6 +14,11 @@ import json, math, os, ssl, sys, time, urllib.request, urllib.parse
 from datetime import datetime, timezone, timedelta
 
 TZ = "Australia/Brisbane"
+# state: (timezone, BOM observation JSON product, BOM observation page product)
+STATES = {
+    "qld": ("Australia/Brisbane", "IDQ60901", "IDQ60801"),
+    "nsw": ("Australia/Sydney", "IDN60901", "IDN60801"),
+}
 AEST = timezone(timedelta(hours=10))
 DAY_START, DAY_END = 5, 19            # local hours kept (inclusive start, exclusive end)
 DAYS = 7
@@ -96,6 +101,66 @@ SITES = [
          bom=("94562", "Gatton"), note="Military airspace limits on weekdays; contact Wicked Wings first."),
 ]
 
+# New South Wales. Sources: SAFA National Site Guide and club pages. Wind ranges are starting estimates (km/h).
+NSW_SITES = [
+    dict(id="stanwell", name="Stanwell Park", sub="Bald Hill", region="Sydney & Illawarra", lat=-34.2240, lon=150.9971,
+         height=180, mode="ridge", dirs=[[90, 180, "E–S"]], wind=[10, 14, 26, 30], rating="PG4",
+         club="FlyStanwell (Stanwell Park HG & PG Club)", url="https://siteguide.org.au/Sites/Details/Stanwell%20Park%20-%20Bald%20Hill",
+         bom=("94749", "Bellambi"), radar="IDR033", tide=(-34.226, 151.03),
+         note="Club membership needed (3-day membership available). Landing markers must be set out before anyone flies."),
+    dict(id="longreef", name="Long Reef", sub="Northern Beaches", region="Sydney & Illawarra", lat=-33.7418, lon=151.3140,
+         height=30, mode="ridge", dirs=[[22.5, 67.5, "NE face"], [135, 180, "SE face (S–SE)"]], wind=[14, 17, 28, 32],
+         rating="NE PG2 · SE PG2/3 supervised", club="Sydney Paragliding & Hang Gliding Club",
+         url="https://siteguide.org.au/Sites/Details/Long%20Reef%20NE", bom=("95768", "North Head"), radar="IDR713",
+         tide=(-33.742, 151.34)),
+    dict(id="hill60", name="Hill 60", sub="Port Kembla", region="Sydney & Illawarra", lat=-34.4915, lon=150.9173,
+         height=60, mode="ridge", dirs=[[22.5, 67.5, "NE"]], wind=[14, 17, 28, 32], rating="PG2",
+         club="Local schools (Adventure Paragliding, HangglideOz)", url="https://siteguide.org.au/Sites/Details/Hill%2060",
+         bom=("94749", "Bellambi"), radar="IDR033",
+         note="Mainly a hang gliding site. The afternoon NE sea breeze can reach 25 knots; talk to locals first."),
+    dict(id="blackheath", name="Mt Blackheath", sub="Blue Mountains", region="Blue Mountains", lat=-33.6437, lon=150.2449,
+         height=1040, mode="both", dirs=[[247.5, 292.5, "Main launch (WSW–WNW)"], [0, 45, "North ramp (N–NE)"]],
+         wind=[4, 8, 20, 26], rating="PG2–4 supervised · PG5 to 15 kt", club="Blue Mountains Hang Gliding Club",
+         url="https://siteguide.org.au/Sites/Details/Mt%20Blackheath", bom=("94743", "Mount Boyce"), radar="IDR713",
+         note="Site briefing from a BMHGC safety officer required. Powerful thermals; strong local effects."),
+    dict(id="catho", name="Catherine Hill Bay", sub="Catho's", region="Hunter & Central Coast", lat=-33.1513, lon=151.6299,
+         height=37, mode="ridge", dirs=[[67.5, 112.5, "ENE–ESE"]], wind=[15, 18, 30, 34], rating="PG2",
+         club="Central Coast Sky Surfers", url="https://siteguide.org.au/Sites/Details/Catherine%20Hill%20Bay%20(Catho's)",
+         bom=("95770", "Norah Head"), radar="IDR043", tide=(-33.151, 151.66)),
+    dict(id="merewether", name="Merewether", sub="Hickson St Lookout, Newcastle", region="Hunter & Central Coast",
+         lat=-32.9533, lon=151.7464, height=None, mode="ridge", dirs=[[135, 180, "S–SSE"]], wind=[15, 18, 30, 34],
+         rating="S face PG2 · E face PG3 supervised", club="Newcastle Paragliding Club / NHGC",
+         url="https://siteguide.org.au/Sites/Details/Merewether%20-%20Hickson%20Street%20Lookout",
+         bom=("94774", "Newcastle Nobbys"), radar="IDR043"),
+    dict(id="northbrother", name="North Brother", sub="Laurieton", region="Mid North Coast", lat=-31.6572, lon=152.7779,
+         height=465, mode="both", dirs=[[22.5, 90, "NNE–E"]], wind=[10, 14, 26, 32], rating="PG4 (PG2/3 via local CFI)",
+         club="Mid North Coast Flyers", url="https://siteguide.org.au/Sites/Details/North%20Brother%20Lookout",
+         bom=("94799", "Port Macquarie Airport"),
+         note="Best early in the day before the sea breeze. Visitors fly with an MNCF member; briefing required."),
+    dict(id="bonnyhills", name="Bonny Hills", sub="Grants Headland", region="Mid North Coast", lat=-31.6077, lon=152.8394,
+         height=35, mode="ridge", dirs=[[90, 135, "E–SE"]], wind=[13, 16, 26, 30], rating="PG3",
+         club="Mid North Coast Flyers", url="https://siteguide.org.au/Sites/Details/Grants%20Headland%20-%20SE%20Bonnys",
+         bom=("94799", "Port Macquarie Airport"), tide=(-31.608, 152.87)),
+    dict(id="crescent", name="Crescent Head", sub="S and E launches", region="Mid North Coast", lat=-31.1932, lon=152.9790,
+         height=None, mode="ridge", dirs=[[90, 135, "E launch (E–SE)"], [135, 180, "S launch (SE–S)"]], wind=[14, 17, 28, 32],
+         rating="S launch all levels · E launch experienced", club=None,
+         url="https://siteguide.org.au/Sites/Details/Crescent%20Head", bom=("94785", "Kempsey Airport"),
+         tide=(-31.193, 153.01)),
+    dict(id="borah", name="Mt Borah", sub="Manilla", region="North West Slopes", lat=-30.6793, lon=150.6116,
+         height=850, mode="thermal", dirs=[[22.5, 67.5, "NE launch"], [67.5, 112.5, "E launch"], [135, 202.5, "S launch"], [225, 315, "W launch"]],
+         wind=[3, 6, 20, 28], rating="PG2", club="Manilla Sky Sailors / flymanilla.com",
+         url="https://siteguide.org.au/Sites/Details/Manilla%20-%20Mt%20Borah", bom=("94761", "Barraba"), radar="IDR693",
+         note="World-renowned XC site with flatlands in front. The road to the top closes when wet."),
+    dict(id="lakegeorge", name="Lake George", sub="Collector launch", region="Southern Tablelands", lat=-34.9699, lon=149.3748,
+         height=910, mode="both", dirs=[[67.5, 112.5, "E"]], wind=[12, 16, 26, 32], rating="PG2",
+         club="ACT Hang Gliding & Paragliding Association", url="https://siteguide.org.au/Sites/Details/Lake%20George%20(Collector)",
+         bom=("95716", "Goulburn Airport"), radar="IDR403",
+         note="Private land: check in with the QR codes at the top and bottom gates."),
+]
+for _s in NSW_SITES:
+    _s["state"] = "nsw"
+SITES = SITES + NSW_SITES
+
 VARS = ["wind_speed_10m", "wind_direction_10m", "wind_gusts_10m", "temperature_2m", "dew_point_2m",
         "cloud_cover_low", "cloud_cover", "precipitation", "precipitation_probability", "cape",
         "boundary_layer_height", "shortwave_radiation", "wind_speed_850hPa", "wind_direction_850hPa",
@@ -141,19 +206,19 @@ def band_wind(launch, prof):
     return round(spd, 1), round(d)
 
 
-def fetch_levels():
+def fetch_levels(sites, tz):
     """Pressure-level winds for hill launches only (keeps the API call budget down)."""
-    idx = [i for i, s in enumerate(SITES) if (s.get("height") or 0) >= INLAND_MIN]
+    idx = [i for i, s in enumerate(sites) if (s.get("height") or 0) >= INLAND_MIN]
     out = {}
     if not idx:
         return idx, out
-    lats = ",".join(str(SITES[i]["lat"]) for i in idx)
-    lons = ",".join(str(SITES[i]["lon"]) for i in idx)
+    lats = ",".join(str(sites[i]["lat"]) for i in idx)
+    lons = ",".join(str(sites[i]["lon"]) for i in idx)
     for mid, key, _ in MODELS:
         if ONLY and key not in ONLY:
             continue
         q = urllib.parse.urlencode(dict(latitude=lats, longitude=lons, hourly=",".join(LVARS), models=mid,
-                                        timezone=TZ, forecast_days=DAYS, wind_speed_unit="kmh"))
+                                        timezone=tz, forecast_days=DAYS, wind_speed_unit="kmh"))
         try:
             data = get_json("https://api.open-meteo.com/v1/forecast?" + q)
             out[key] = data if isinstance(data, list) else [data]
@@ -223,15 +288,15 @@ def vec_mean(dirs, speeds):
     return round((math.degrees(math.atan2(u, v)) + 360) % 360)
 
 
-def fetch_models():
-    lats = ",".join(str(s["lat"]) for s in SITES)
-    lons = ",".join(str(s["lon"]) for s in SITES)
+def fetch_models(sites, tz):
+    lats = ",".join(str(s["lat"]) for s in sites)
+    lons = ",".join(str(s["lon"]) for s in sites)
     out = {}
     for mid, key, _ in MODELS:
         if ONLY and key not in ONLY:
             continue
         q = urllib.parse.urlencode(dict(latitude=lats, longitude=lons, hourly=",".join(VARS), models=mid,
-                                        timezone=TZ, forecast_days=DAYS, wind_speed_unit="kmh"))
+                                        timezone=tz, forecast_days=DAYS, wind_speed_unit="kmh"))
         try:
             data = get_json("https://api.open-meteo.com/v1/forecast?" + q)
             if isinstance(data, dict):
@@ -242,12 +307,14 @@ def fetch_models():
     return out
 
 
-def fetch_tides():
+def fetch_tides(sites, tz):
     res = {}
-    pts = [s for s in SITES if s.get("tide")]
+    pts = [s for s in sites if s.get("tide")]
+    if not pts:
+        return res
     q = urllib.parse.urlencode(dict(latitude=",".join(str(s["tide"][0]) for s in pts),
                                     longitude=",".join(str(s["tide"][1]) for s in pts),
-                                    hourly="sea_level_height_msl", timezone=TZ, forecast_days=DAYS))
+                                    hourly="sea_level_height_msl", timezone=tz, forecast_days=DAYS))
     try:
         data = get_json("https://marine-api.open-meteo.com/v1/marine?" + q)
         if isinstance(data, dict):
@@ -271,8 +338,8 @@ def fetch_tides():
 
 def fetch_obs():
     res = {}
-    for wmo in sorted({s["bom"][0] for s in SITES}):
-        url = f"https://www.bom.gov.au/fwo/IDQ60901/IDQ60901.{wmo}.json"
+    for prod, wmo in sorted({(STATES[s.get("state", "qld")][1], s["bom"][0]) for s in SITES}):
+        url = f"https://www.bom.gov.au/fwo/{prod}/{prod}.{wmo}.json"
         try:
             d = get_json(url)["observations"]["data"][:8]
             res[wmo] = [dict(t=o.get("local_date_time_full"), dir=o.get("wind_dir"), ws=o.get("wind_spd_kmh"),
@@ -283,13 +350,29 @@ def fetch_obs():
 
 
 def build():
-    models = fetch_models()
-    lidx, levels = fetch_levels()
-    tides = fetch_tides()
     obs = fetch_obs()
+    sites_out, ok_models = [], set()
+    for state, (tz, _, obs_page) in STATES.items():
+        group = [s for s in SITES if s.get("state", "qld") == state]
+        if group:
+            sites_out += build_state(state, tz, obs_page, group, obs, ok_models)
+    return dict(generated=datetime.now(AEST).isoformat(timespec="minutes"),
+                models=[dict(key=k, id=m, label=l, ok=k in ok_models) for m, k, l in MODELS],
+                states=[dict(id=k, tz=v[0]) for k, v in STATES.items()],
+                sites=sites_out)
+
+
+def build_state(state, tz, obs_page, sites, obs, ok_models):
+    models = fetch_models(sites, tz)
+    lidx, levels = fetch_levels(sites, tz)
+    tides = fetch_tides(sites, tz)
     keys = [k for _, k, _ in MODELS if k in models]
+    ok_models.update(keys)
+    if not keys:
+        print("no models for", state, file=sys.stderr)
+        return []
     sites_out = []
-    for idx, s in enumerate(SITES):
+    for idx, s in enumerate(sites):
         per = {k: models[k][idx] for k in keys}
         ref = per[keys[0]]
         times = ref["hourly"]["time"]
@@ -333,12 +416,11 @@ def build():
         o = dict(id=s["id"], name=s["name"], sub=s["sub"], region=s["region"], lat=s["lat"], lon=s["lon"],
                  height=s["height"], height_note=s.get("height_note"), band=BAND_TOP if "wsl" in cons else None, elev=elev, mode=s["mode"], dirs=s["dirs"], wind=s["wind"], rating=s["rating"],
                  club=s["club"], url=s["url"], cta=s.get("cta"), note=s.get("note"), holfuy=s.get("holfuy"),
-                 bom=dict(id=s["bom"][0], name=s["bom"][1], obs=obs.get(s["bom"][0], [])),
+                 state=state, tz=tz, radar=s.get("radar"),
+                 bom=dict(id=s["bom"][0], name=s["bom"][1], page=obs_page, obs=obs.get(s["bom"][0], [])),
                  tide=tides.get(s["id"]), tide_note=s.get("tide_note"), t=times_out, c=cons, m=mod)
         sites_out.append(o)
-    return dict(generated=datetime.now(AEST).isoformat(timespec="minutes"),
-                models=[dict(key=k, id=m, label=l, ok=k in models) for m, k, l in MODELS],
-                sites=sites_out)
+    return sites_out
 
 
 if __name__ == "__main__":
