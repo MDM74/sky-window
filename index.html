@@ -241,7 +241,7 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
     <p><b>Thermal and XC</b> scores (09:00–17:00) use usable lift height (lower of the boundary layer top and estimated cloudbase), the 850–700 hPa lapse rate, sunshine, wind at about 1,500 m, launch wind, and storm risk from CAPE and rain chance. "Top of lift" is shown in feet above sea level, capped where the site has a CTA ceiling.</p>
     <p><b>Launch height:</b> for hill launches (200 m and higher) the score uses the forecast wind in the band from launch height to 300 m above it, built from each model's winds at several heights, rather than the 10 m ground wind, which describes the model's smoothed valley terrain. The hour table shows both. Gusts add the model's ground gust spread on top. Coastal launches use the 10 m wind. "Top of lift" is given above sea level and above launch.</p>
     <p><b>Model agreement</b> re-scores the launch wind using each model separately (ECMWF, GFS, ICON, UK Met Office). Low agreement means treat the day as uncertain, especially 4+ days out.</p>
-    <p>Wind ranges per site are starting estimates for paragliders. Ask Claude to adjust any site's range, add a site, or change the launch arcs.</p>
+    <p>Wind ranges per site are starting estimates for paragliders.</p>
   </details>
 
   <footer>
@@ -664,7 +664,7 @@ document.getElementById("filters").addEventListener("click",e=>{
     if(!r.ok) throw new Error("HTTP "+r.status);
     S.data=await r.json();
   }catch(err){
-    document.getElementById("status").innerHTML=`<span class="flag">Forecast data could not load (${esc(err.message)}). Reload the page; if it persists, ask Claude to refresh the data.</span>`;
+    document.getElementById("status").innerHTML=`<span class="flag">Forecast data could not load (${esc(err.message)}). Reload the page in a few minutes.</span>`;
     document.getElementById("grid").innerHTML=`<tbody><tr><td class="empty">No forecast data yet.</td></tr></tbody>`;
     return;
   }
