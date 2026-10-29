@@ -497,7 +497,7 @@ function detailHTML(s,dc){
   let tideHTML="";
   if(s.tide && s.tide.ext){
     const ex=s.tide.ext.filter(x=>x[0].startsWith(dc.date));
-    tideHTML=`<div class="box"><h4>Tides ${esc(dayLabel(dc.date))}</h4><div class="mono">${ex.map(x=>`${x[1]==="H"?"High":"Low"} ${x[0].slice(11,16)} (${x[2]>0?"+":""}${x[2]} m)`).join("<br>")||"–"}</div>${s.tide_note?`<span class="note">${esc(s.tide_note)}</span>`:""}<span class="note">Modelled sea level; check BOM/MSQ tide tables for official times.</span></div>`;
+    tideHTML=`<div class="box"><h4>Tides ${esc(dayLabel(dc.date))}</h4><div class="mono">${ex.map(x=>`${x[1]==="H"?"High":"Low"} ${x[0].slice(11,16)} (${x[2]>0?"+":""}${x[2]} m)`).join("<br>")||"–"}</div>${s.tide_note?`<span class="note">${esc(s.tide_note)}</span>`:""}<span class="note">Modelled sea level; check official tide tables for exact times.</span></div>`;
   }
   const xc = s.mode!=="ridge" && dc.peak.d850!=null ? `<div class="box"><h4>XC outlook</h4><div>Top of lift around <b>${dc.peak.top?topText(s,dc.peak.top):"–"}</b>${dc.peak.usable!=null&&s.height!=null?`, roughly ${Hft(dc.peak.usable*3.281)} above launch`:""}${s.cta?` (CTA ${s.cta.toLocaleString()} ft)`:""}. Wind at about ${Hm(1500)} from the ${comp(dc.peak.d850)} at ${W(dc.peak.w850)} ${WU()}, so drift heads ${comp((dc.peak.d850+180)%360)}.</div><span class="note">Lapse rate ${fmt(dc.peak.lapse,1)} °C/km (above 6.5 is lively). CAPE ${fmt(dc.peak.cape)} J/kg.</span></div>`:"";
   const radar = s.radar || (stateOf(s)==="qld" ? (s.lat>-26.9 && s.lon>152.6 ? "IDR663" : s.lon<152.5 ? "IDR503" : "IDR663") : null);
