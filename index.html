@@ -488,7 +488,7 @@ function detailHTML(s,dc){
       <span class="chip" ${s.height_note?`title="${esc(s.height_note)}"`:""}>Launch ${s.height!=null?(s.height_note?"≈":"")+s.height.toLocaleString()+" m ASL ("+Math.round(s.height*3.281/10)*10+" ft)":(s.elev!=null?"≈"+Math.round(s.elev)+" m (terrain)":"–")}</span>
       ${band?`<span class="chip">Wind scored at launch height</span>`:""}
       <span class="chip">Soaring range ${s.wind[0]}–${s.wind[3]} km/h</span>
-      <span class="chip">${esc(s.club)}</span>
+      ${s.club?`<span class="chip">${esc(s.club)}</span>`:""}
       ${s.cta?`<span class="chip">CTA ${s.cta.toLocaleString()} ft</span>`:""}
     </div>
     ${s.note?`<div class="note">${esc(s.note)}</div>`:""}
