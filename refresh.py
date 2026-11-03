@@ -35,9 +35,10 @@ MODELS = [  # (open-meteo id, short key, label)
 # mode: ridge | thermal | both.  Sources: SAFA National Site Guide (siteguide.org.au) and club pages.
 SITES = [
     dict(id="rainbow", name="Rainbow Beach", sub="Carlo Sand Blow", region="Cooloola Coast", lat=-25.9148, lon=153.0996,
-         height=90, mode="ridge", dirs=[[22.5, 67.5, "NNE–ENE"]], wind=[15, 18, 30, 36], rating="PG2",
+         height=90, mode="ridge", dirs=[[0, 67.5, "N–ENE"]], wind=[15, 18, 30, 36], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/rainbow-beach/",
-         bom=("94584", "Double Island Point"), tide=(-25.905, 153.13), tide_note="Some high tides leave no safe beach landing below launch."),
+         bom=("94584", "Double Island Point"), tide=(-25.905, 153.13), tide_note="Some high tides leave no safe beach landing below launch.",
+         note="Site guide lists NNE–ENE; flown from the sand blow in a northerly on 1 Nov 2026, so N is included here."),
     dict(id="teewah", name="Teewah Beach", sub="Coloured sands", region="Cooloola Coast", lat=-26.26887, lon=153.06666,
          height=30, mode="ridge", dirs=[[67.5, 112.5, "E"]], wind=[17, 20, 30, 35], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/teewah-beach/",
