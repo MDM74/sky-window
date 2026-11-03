@@ -35,27 +35,27 @@ MODELS = [  # (open-meteo id, short key, label)
 # mode: ridge | thermal | both.  Sources: SAFA National Site Guide (siteguide.org.au) and club pages.
 SITES = [
     dict(id="rainbow", name="Rainbow Beach", sub="Carlo Sand Blow", region="Cooloola Coast", lat=-25.9148, lon=153.0996,
-         height=90, mode="ridge", dirs=[[22.5, 67.5, "NNE–ENE"]], wind=[12, 15, 26, 32], rating="PG2",
+         height=90, mode="ridge", dirs=[[22.5, 67.5, "NNE–ENE"]], wind=[15, 18, 30, 36], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/rainbow-beach/",
          bom=("94584", "Double Island Point"), tide=(-25.905, 153.13), tide_note="Some high tides leave no safe beach landing below launch."),
     dict(id="teewah", name="Teewah Beach", sub="Coloured sands", region="Cooloola Coast", lat=-26.26887, lon=153.06666,
-         height=30, mode="ridge", dirs=[[67.5, 112.5, "E"]], wind=[13, 16, 26, 30], rating="PG2",
+         height=30, mode="ridge", dirs=[[67.5, 112.5, "E"]], wind=[17, 20, 30, 35], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/teewah-beach/",
          bom=("94570", "Tewantin"), tide=(-26.27, 153.10), tide_note="4WD beach access: check tide before driving."),
     dict(id="sunrise", name="Sunrise Beach", sub="Noosa", region="Sunshine Coast", lat=-26.4152, lon=153.1102,
-         height=23, mode="ridge", dirs=[[67.5, 112.5, "E"]], wind=[14, 17, 28, 32], rating="All levels (induction required)",
+         height=23, mode="ridge", dirs=[[67.5, 112.5, "E"]], wind=[17, 20, 30, 35], rating="All levels (induction required)",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/sunrise/",
          bom=("94569", "Sunshine Coast Airport"), tide=(-26.415, 153.14)),
     dict(id="cartwright", name="Point Cartwright", sub="Buddina", region="Sunshine Coast", lat=-26.68041, lon=153.13835,
-         height=22, mode="ridge", dirs=[[112.5, 157.5, "SSE–ESE"]], wind=[14, 17, 28, 32], rating="PG2 (controlled airspace)",
+         height=22, mode="ridge", dirs=[[112.5, 157.5, "SSE–ESE"]], wind=[17, 20, 30, 35], rating="PG2 (controlled airspace)",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/carties/",
          bom=("94569", "Sunshine Coast Airport")),
     dict(id="moffats", name="Moffat Beach", sub="Caloundra headland", region="Sunshine Coast", lat=-26.790351, lon=153.144828,
-         height=12, mode="ridge", dirs=[[0, 22.5, "N–NNE"]], wind=[16, 19, 28, 32], rating="PG4",
+         height=12, mode="ridge", dirs=[[0, 22.5, "N–NNE"]], wind=[19, 22, 30, 35], rating="PG4",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/moffats/",
          bom=("94569", "Sunshine Coast Airport")),
     dict(id="kings", name="Kings Beach", sub="Caloundra", region="Sunshine Coast", lat=-26.802527, lon=153.14456,
-         height=15, mode="ridge", dirs=[[157.5, 180, "S–SSE"]], wind=[16, 19, 28, 32], rating="Experienced pilots",
+         height=15, mode="ridge", dirs=[[157.5, 180, "S–SSE"]], wind=[19, 22, 30, 35], rating="Experienced pilots",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/kings-beach/",
          bom=("94569", "Sunshine Coast Airport"), tide=(-26.805, 153.17), tide_note="Do not fly at high tide: no contingency landing."),
     dict(id="buchys", name="Buchy's", sub="Gerrards Lookout", region="Sunshine Coast Hinterland", lat=-26.731103, lon=152.901987,
@@ -109,12 +109,12 @@ NSW_SITES = [
          bom=("94749", "Bellambi"), radar="IDR033", tide=(-34.226, 151.03),
          note="Club membership needed (3-day membership available). Landing markers must be set out before anyone flies."),
     dict(id="longreef", name="Long Reef", sub="Northern Beaches", region="Sydney & Illawarra", lat=-33.7418, lon=151.3140,
-         height=30, mode="ridge", dirs=[[22.5, 67.5, "NE face"], [135, 180, "SE face (S–SE)"]], wind=[14, 17, 28, 32],
+         height=30, mode="ridge", dirs=[[22.5, 67.5, "NE face"], [135, 180, "SE face (S–SE)"]], wind=[15, 18, 30, 35],
          rating="NE PG2 · SE PG2/3 supervised", club="Sydney Paragliding & Hang Gliding Club",
          url="https://siteguide.org.au/Sites/Details/Long%20Reef%20NE", bom=("95768", "North Head"), radar="IDR713",
          tide=(-33.742, 151.34)),
     dict(id="hill60", name="Hill 60", sub="Port Kembla", region="Sydney & Illawarra", lat=-34.4915, lon=150.9173,
-         height=60, mode="ridge", dirs=[[22.5, 67.5, "NE"]], wind=[14, 17, 28, 32], rating="PG2",
+         height=60, mode="ridge", dirs=[[22.5, 67.5, "NE"]], wind=[15, 18, 30, 35], rating="PG2",
          club="Local schools (Adventure Paragliding, HangglideOz)", url="https://siteguide.org.au/Sites/Details/Hill%2060",
          bom=("94749", "Bellambi"), radar="IDR033",
          note="Mainly a hang gliding site. The afternoon NE sea breeze can reach 25 knots; talk to locals first."),
@@ -124,11 +124,11 @@ NSW_SITES = [
          url="https://siteguide.org.au/Sites/Details/Mt%20Blackheath", bom=("94743", "Mount Boyce"), radar="IDR713",
          note="Site briefing from a BMHGC safety officer required. Powerful thermals; strong local effects."),
     dict(id="catho", name="Catherine Hill Bay", sub="Catho's", region="Hunter & Central Coast", lat=-33.1513, lon=151.6299,
-         height=37, mode="ridge", dirs=[[67.5, 112.5, "ENE–ESE"]], wind=[15, 18, 30, 34], rating="PG2",
+         height=37, mode="ridge", dirs=[[67.5, 112.5, "ENE–ESE"]], wind=[18, 20, 30, 35], rating="PG2",
          club="Central Coast Sky Surfers", url="https://siteguide.org.au/Sites/Details/Catherine%20Hill%20Bay%20(Catho's)",
          bom=("95770", "Norah Head"), radar="IDR043", tide=(-33.151, 151.66)),
     dict(id="merewether", name="Merewether", sub="Hickson St Lookout, Newcastle", region="Hunter & Central Coast",
-         lat=-32.9533, lon=151.7464, height=None, mode="ridge", dirs=[[135, 180, "S–SSE"]], wind=[15, 18, 30, 34],
+         lat=-32.9533, lon=151.7464, height=None, mode="ridge", dirs=[[135, 180, "S–SSE"]], wind=[18, 20, 30, 35],
          rating="S face PG2 · E face PG3 supervised", club="Newcastle Paragliding Club / NHGC",
          url="https://siteguide.org.au/Sites/Details/Merewether%20-%20Hickson%20Street%20Lookout",
          bom=("94774", "Newcastle Nobbys"), radar="IDR043"),
@@ -138,11 +138,11 @@ NSW_SITES = [
          bom=("94799", "Port Macquarie Airport"),
          note="Best early in the day before the sea breeze. Visitors fly with an MNCF member; briefing required."),
     dict(id="bonnyhills", name="Bonny Hills", sub="Grants Headland", region="Mid North Coast", lat=-31.6077, lon=152.8394,
-         height=35, mode="ridge", dirs=[[90, 135, "E–SE"]], wind=[13, 16, 26, 30], rating="PG3",
+         height=35, mode="ridge", dirs=[[90, 135, "E–SE"]], wind=[15, 18, 28, 33], rating="PG3",
          club="Mid North Coast Flyers", url="https://siteguide.org.au/Sites/Details/Grants%20Headland%20-%20SE%20Bonnys",
          bom=("94799", "Port Macquarie Airport"), tide=(-31.608, 152.87)),
     dict(id="crescent", name="Crescent Head", sub="S and E launches", region="Mid North Coast", lat=-31.1932, lon=152.9790,
-         height=None, mode="ridge", dirs=[[90, 135, "E launch (E–SE)"], [135, 180, "S launch (SE–S)"]], wind=[14, 17, 28, 32],
+         height=None, mode="ridge", dirs=[[90, 135, "E launch (E–SE)"], [135, 180, "S launch (SE–S)"]], wind=[15, 18, 30, 35],
          rating="S launch all levels · E launch experienced", club=None,
          url="https://siteguide.org.au/Sites/Details/Crescent%20Head", bom=("94785", "Kempsey Airport"),
          tide=(-31.193, 153.01)),
@@ -161,16 +161,24 @@ for _s in NSW_SITES:
     _s["state"] = "nsw"
 SITES = SITES + NSW_SITES
 
-VARS = ["wind_speed_10m", "wind_direction_10m", "wind_gusts_10m", "temperature_2m", "dew_point_2m",
+VARS = ["wind_speed_10m", "wind_direction_10m", "wind_speed_80m", "wind_direction_80m", "wind_gusts_10m", "temperature_2m", "dew_point_2m",
         "cloud_cover_low", "cloud_cover", "precipitation", "precipitation_probability", "cape",
         "boundary_layer_height", "shortwave_radiation", "wind_speed_850hPa", "wind_direction_850hPa",
         "temperature_850hPa", "temperature_700hPa", "geopotential_height_850hPa", "geopotential_height_700hPa"]
-SHORT = dict(wind_speed_10m="ws", wind_direction_10m="wd", wind_gusts_10m="wg", temperature_2m="t", dew_point_2m="td",
+SHORT = dict(wind_speed_10m="ws", wind_direction_10m="wd", wind_speed_80m="ws80", wind_direction_80m="wd80", wind_gusts_10m="wg", temperature_2m="t", dew_point_2m="td",
              cloud_cover_low="lcc", cloud_cover="cc", precipitation="pr", precipitation_probability="pp", cape="cape",
              boundary_layer_height="blh", shortwave_radiation="sw", wind_speed_850hPa="w850", wind_direction_850hPa="d850",
              temperature_850hPa="t850", temperature_700hPa="t700", geopotential_height_850hPa="z850", geopotential_height_700hPa="z700")
-DIRVARS = {"wd", "d850"}
-MVARS = ("ws", "wd", "wg", "pr", "blh", "cape", "lcc")
+DIRVARS = {"wd", "d850", "wd80"}
+DIRSPEED = {"wd": "wind_speed_10m", "d850": "wind_speed_850hPa", "wd80": "wind_speed_80m"}
+MVARS = ("ws", "wd", "wg", "pr", "blh", "cape", "lcc", "ws80", "wd80")
+
+# Coastal ridge sites: score on the 80 m model wind. Checked 31 Oct - 3 Nov 2026 against exposed BOM
+# stations (Double Island Pt 96 m, Norah Head, Cape Moreton, Bellambi, North Head): the models' 10 m
+# wind on coastal land cells read 1.2-2x too light, the 80 m wind was close to observed (ratio ~0.85-1.2).
+# Models without an 80 m level (UKMO) are scaled from 10 m by the other models' 80/10 m ratio that hour.
+COAST_LEVEL = 80
+DEFAULT_80_10 = 1.4
 
 # Wind at launch height: for hill launches (>= INLAND_MIN m above sea level) the 10 m model wind
 # describes the model's smoothed ground, not an exposed launch. We build a vertical wind profile from
@@ -395,7 +403,7 @@ def build_state(state, tz, obs_page, sites, obs, ok_models):
                 vals = [(k, per[k]["hourly"].get(v, [None] * len(times))[i]) for k in keys]
                 good = [(k, x) for k, x in vals if x is not None]
                 if sk in DIRVARS:
-                    spv = "wind_speed_10m" if sk == "wd" else "wind_speed_850hPa"
+                    spv = DIRSPEED[sk]
                     sp = {k: per[k]["hourly"].get(spv, [None] * len(times))[i] for k in keys}
                     cons[sk].append(vec_mean([x for _, x in good], [sp[k] for k, _ in good]))
                 else:
@@ -404,6 +412,28 @@ def build_state(state, tz, obs_page, sites, obs, ok_models):
                     for k, x in vals:
                         mod[k][sk].append(None if x is None else (round(x) if sk in ("wd", "blh", "cape", "lcc") else r1(x)))
         # wind in the flying band above a hill launch, per model and as a consensus
+        if (s.get("height") or 0) < INLAND_MIN and keys:
+            n = len(times_out); ls = {}
+            for k in keys:
+                ls[k] = (list(mod[k]["ws80"]), list(mod[k]["wd80"]))
+            for i in range(n):
+                ratios = [mod[k]["ws80"][i] / mod[k]["ws"][i] for k in keys
+                          if mod[k]["ws80"][i] is not None and mod[k]["ws"][i] and mod[k]["ws"][i] > 2]
+                rat = min(2.5, max(1.0, sum(ratios) / len(ratios))) if ratios else DEFAULT_80_10
+                for k in keys:
+                    if ls[k][0][i] is None and mod[k]["ws"][i] is not None:
+                        ls[k][0][i] = r1(mod[k]["ws"][i] * rat)
+                        ls[k][1][i] = mod[k]["wd"][i]
+            for k in keys:
+                mod[k]["wsl"], mod[k]["wdl"] = ls[k]
+            cons["wsl"], cons["wdl"] = [], []
+            for i in range(n):
+                good = [(ls[k][0][i], ls[k][1][i]) for k in keys if ls[k][0][i] is not None and ls[k][1][i] is not None]
+                cons["wsl"].append(r1(sum(g[0] for g in good) / len(good)) if good else None)
+                cons["wdl"].append(vec_mean([g[1] for g in good], [g[0] for g in good]) if good else None)
+        for k in keys:  # raw 80 m columns are folded into wsl/wdl; drop them to keep the file small
+            mod[k].pop("ws80", None); mod[k].pop("wd80", None)
+        cons.pop("ws80", None); cons.pop("wd80", None)
         if idx in lidx and levels:
             j = lidx.index(idx)
             ls = {}
@@ -422,7 +452,8 @@ def build_state(state, tz, obs_page, sites, obs, ok_models):
                     cons["wsl"].append(r1(sum(g[0] for g in good) / len(good)) if good else None)
                     cons["wdl"].append(vec_mean([g[1] for g in good], [g[0] for g in good]) if good else None)
         o = dict(id=s["id"], name=s["name"], sub=s["sub"], region=s["region"], lat=s["lat"], lon=s["lon"],
-                 height=s["height"], height_note=s.get("height_note"), band=BAND_TOP if "wsl" in cons else None, elev=elev, mode=s["mode"], dirs=s["dirs"], wind=s["wind"], rating=s["rating"],
+                 height=s["height"], height_note=s.get("height_note"), band=(BAND_TOP if (s.get("height") or 0) >= INLAND_MIN else None) if "wsl" in cons else None,
+                 wl=("band" if (s.get("height") or 0) >= INLAND_MIN else "coast") if "wsl" in cons else None, elev=elev, mode=s["mode"], dirs=s["dirs"], wind=s["wind"], rating=s["rating"],
                  club=s["club"], url=s["url"], cta=s.get("cta"), note=s.get("note"), holfuy=s.get("holfuy"),
                  state=state, tz=tz, radar=s.get("radar"),
                  bom=dict(id=s["bom"][0], name=s["bom"][1], page=obs_page, obs=obs.get(s["bom"][0], [])),

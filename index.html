@@ -255,6 +255,7 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
     <summary>How the scores work</summary>
     <p><b>Coastal and ridge soaring</b> scores wind direction against each launch's flyable arc, wind strength against the site's soaring range, gust spread, rain and storm risk.</p>
     <p><b>Thermal and XC</b> scores (09:00–17:00) use usable lift height (lower of the boundary layer top and estimated cloudbase), the 850–700 hPa lapse rate, sunshine, wind at about 1,500 m, launch wind, and storm risk from CAPE and rain chance. "Top of lift" is shown in feet above sea level, capped where the site has a CTA ceiling.</p>
+    <p><b>Coastal wind height:</b> coastal sites are scored on the models' 80 m wind (about cliff and soaring height). Checked against exposed BOM stations such as the 96 m Double Island Point lighthouse, the models' 10 m wind on coastal cells read 1.2–2 times too light, while the 80 m wind was close to what was observed. The hour table shows both. A wind up to one compass point (22.5°) outside a launch's arc counts as "cross" and halves the score.</p>
     <p><b>Launch height:</b> for hill launches (200 m and higher) the score uses the forecast wind in the band from launch height to 300 m above it, built from each model's winds at several heights, rather than the 10 m ground wind, which describes the model's smoothed valley terrain. The hour table shows both. Gusts add the model's ground gust spread on top. Coastal launches use the 10 m wind. "Top of lift" is given above sea level and above launch.</p>
     <p><b>Model agreement</b> re-scores the launch wind using each model separately (ECMWF, GFS, ICON, UK Met Office). Low agreement means treat the day as uncertain, especially 4+ days out.</p>
     <p>Wind ranges per site are starting estimates for paragliders.</p>
@@ -282,7 +283,7 @@ function dirFactor(site,wd,ws,light){
   if(wd==null) return {f:0,label:null};
   let best=0,label=null;
   for(const [a,b,name] of site.dirs){
-    let f; if(inArc(wd,a,b)) f=1; else { const d=Math.min(angDist(wd,a),angDist(wd,b)); f=d<=15?.5:d<=25?.2:0; }
+    let f; if(inArc(wd,a,b)) f=1; else { const d=Math.min(angDist(wd,a),angDist(wd,b)); f=d<=22.5?.5:d<=35?.2:0; }
     if(f>best){best=f;label=name;}
   }
   if(light && ws!=null && ws<6) best=Math.max(best,.7);
@@ -464,12 +465,25 @@ function siteCard(s,dc){
   </details>`;
 }
 
+// compare the latest station reading with the forecast for the same hour (coastal sites only:
+// inland stations sit in valleys and do not represent launch wind)
+function nowcast(s,o){
+  if(s.wl!=="coast"||!o.t||o.ws==null) return "";
+  const key=`${o.t.slice(0,4)}-${o.t.slice(4,6)}-${o.t.slice(6,8)}T${o.t.slice(8,10)}:00`;
+  const i=s.t.indexOf(key); if(i<0) return "";
+  const fc=s.c.wsl[i]; if(fc==null) return "";
+  const diff=o.ws-fc;
+  let msg = diff>Math.max(6,fc*.3) ? `running <b>stronger</b> than forecast` : diff< -Math.max(6,fc*.3) ? `running <b>lighter</b> than forecast` : `close to forecast`;
+  return `<span class="note">Station ${W(o.ws)} vs forecast ${W(fc)} ${WU()} for that hour: ${msg}.</span>`;
+}
 function detailHTML(s,dc){
   const mk=S.data.models.filter(m=>m.ok).map(m=>m.key);
   const mname={ec:"EC",gfs:"GFS",icon:"ICON",uk:"UK"};
   const winHrs=new Set(dc.verdict!=="no"?dc.win.map(h=>h.hr):[]);
   const thermalCols = s.mode!=="ridge";
   const band = s.band && s.c.wsl ? s.band : null;
+  const coast = s.wl==="coast" && s.c.wsl;
+  const twoWinds = band || coast;
   let rows=dc.hrs.map(h=>{
     const ok=h.dir.f>=1?"y":h.dir.f>=.5?"m":"n";
     const okTxt=!s.dirs.length?"":`<span class="dirok ${ok}">${ok==="y"?"on":ok==="m"?"cross":"off"}</span>`;
@@ -478,12 +492,12 @@ function detailHTML(s,dc){
     return `<tr class="${winHrs.has(h.hr)?"best":""}"><td>${String(h.hr).padStart(2,"0")}:00</td>
       <td><span class="scorebar"><b style="width:${h.score}%;background:${col}"></b></span>${h.score}</td>
       <td>${arrow(h.wd)}${comp(h.wd)} ${W(h.ws)}${h.wg!=null?` gusts ${W(h.wg)}`:""} ${okTxt}</td>
-      ${band?`<td class="models">${comp(h.wd10)} ${W(h.ws10)}</td>`:""}
+      ${twoWinds?`<td class="models">${comp(h.wd10)} ${W(h.ws10)}</td>`:""}
       <td class="models">${models}</td>
       ${thermalCols?`<td>${h.top?topText(s,h.top):"–"}</td><td>${fmt(h.lapse,1)}</td><td>${h.w850!=null?`${comp(h.d850)} ${W(h.w850)}`:"–"}</td>`:""}
       <td>${fmt(h.lcc)}%</td><td>${h.pr>=.1?fmt(h.pr,1)+" mm":"–"} ${h.pp?`<span class="models">${fmt(h.pp)}%</span>`:""}</td><td>${h.cape>=300?`<span class="${h.storm?"flag":""}">${fmt(h.cape)}</span>`:fmt(h.cape)}</td></tr>`;
   }).join("");
-  const head=`<tr><th>Time</th><th>Score</th><th>${band?`Wind at launch +0–${Hm(band)} (${WU()})`:`Wind ${WU()}`}</th>${band?"<th>Ground wind</th>":""}<th>Models (${mk.map(k=>mname[k]).join(" · ")})</th>${thermalCols?"<th>Top of lift</th><th>Lapse °C/km</th><th>850 hPa wind</th>":""}<th>Low cloud</th><th>Rain</th><th>CAPE</th></tr>`;
+  const head=`<tr><th>Time</th><th>Score</th><th>${band?`Wind at launch +0–${Hm(band)} (${WU()})`:coast?`Wind at ~${Hm(80)} (${WU()})`:`Wind ${WU()}`}</th>${band?"<th>Ground wind</th>":coast?"<th>10 m model wind</th>":""}<th>Models (${mk.map(k=>mname[k]).join(" · ")})</th>${thermalCols?"<th>Top of lift</th><th>Lapse °C/km</th><th>850 hPa wind</th>":""}<th>Low cloud</th><th>Rain</th><th>CAPE</th></tr>`;
 
   // observations
   const ob=s.bom.obs||[];
@@ -491,7 +505,7 @@ function detailHTML(s,dc){
   if(ob.length){
     const o=ob[0]; const tt=o.t?`${o.t.slice(8,10)}:${o.t.slice(10,12)}`:"";
     obsHTML=`<div class="mono">${esc(o.dir||"–")} ${W(o.ws)}${o.wg!=null?` gusts ${W(o.wg)}`:""} ${WU()} · ${fmt(o.temp,1)}°C · ${fmt(o.rh)}% RH</div>
-      <span class="note">As at ${esc(tt)} on refresh. Trend: ${ob.slice(0,6).reverse().map(x=>`${x.dir||"–"} ${W(x.ws)}`).map(esc).join(" → ")}</span>`;
+      <span class="note">As at ${esc(tt)} on refresh. Trend: ${ob.slice(0,6).reverse().map(x=>`${x.dir||"–"} ${W(x.ws)}`).map(esc).join(" → ")}</span>${nowcast(s,o)}`;
   }
   // tides
   let tideHTML="";
@@ -507,12 +521,13 @@ function detailHTML(s,dc){
     [`https://www.bom.gov.au/products/${s.bom.page||"IDQ60801"}/${s.bom.page||"IDQ60801"}.${s.bom.id}.shtml`,`BOM obs: ${s.bom.name}`],
     [radar?`https://www.bom.gov.au/products/${radar}.loop.shtml`:"https://www.bom.gov.au/australia/radar/", "BOM radar loop"],
     [`https://www.windy.com/${s.lat}/${s.lon}?${s.lat},${s.lon},11`,"Windy"],
+    s.wl==="coast"?["https://www.bom.gov.au/marine/","BOM coastal wind forecast"]:null,
     ["https://xcskies.com/","XC Skies"],
     ["https://skysight.io/","SkySight (subscribers)"],
   ].filter(Boolean);
   return `<div class="facts">
       <span class="chip" ${s.height_note?`title="${esc(s.height_note)}"`:""}>Launch ${s.height!=null?(s.height_note?"≈":"")+Hm(s.height)+" ASL":(s.elev!=null?"≈"+Hm(s.elev)+" (terrain)":"–")}</span>
-      ${band?`<span class="chip">Wind scored at launch height</span>`:""}
+      ${band?`<span class="chip">Wind scored at launch height</span>`:coast?`<span class="chip">Wind scored at ~${Hm(80)} (cliff height)</span>`:""}
       <span class="chip">Soaring range ${W(s.wind[0])}–${W(s.wind[3])} ${WU()}</span>
       ${s.club?`<span class="chip">${esc(s.club)}</span>`:""}
       ${s.cta?`<span class="chip">CTA ${s.cta.toLocaleString()} ft${U.h==="m"?` (${Math.round(s.cta/3.281/10)*10} m)`:""}</span>`:""}
