@@ -24,6 +24,12 @@ DAY_START, DAY_END = 5, 19            # local hours kept (inclusive start, exclu
 DAYS = 7
 ONLY = [m for m in os.environ.get("SKYWINDOW_MODELS", "").split(",") if m]  # testing: limit models
 
+# ECMWF's 9 km run on Open-Meteo carries no pressure-level data, so ECMWF's upper-air fields
+# (850/700 hPa wind, temperature, heights, and the launch-band profile) come from its 0.25 deg run.
+UPPER_SOURCE = {"ec": "ecmwf_ifs025"}
+UPPER_VARS = ["wind_speed_850hPa", "wind_direction_850hPa", "temperature_850hPa", "temperature_700hPa",
+              "geopotential_height_850hPa", "geopotential_height_700hPa"]
+STALE_OBS_H = 3          # a station reading older than this is treated as stale
 MODELS = [  # (open-meteo id, short key, label)
     ("ecmwf_ifs", "ec", "ECMWF IFS 9 km"),
     ("gfs_global", "gfs", "NOAA GFS"),
@@ -70,7 +76,7 @@ SITES = [
     dict(id="widgee", name="Mt Widgee", sub="West of Gympie", region="Wide Bay", lat=-26.2476, lon=152.361,
          height=620, mode="both", dirs=[[90, 157.5, "E–SSE"]], wind=[12, 16, 26, 32], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/widgee/",
-         bom=("94566", "Gympie"), note="Bombout owner needs 24 hours notice."),
+         bom=("94566", "Gympie"), bom_alt=[("94549", "Kingaroy")], note="Bombout owner needs 24 hours notice."),
     dict(id="tamborine", name="Mt Tamborine", sub="Tambo launch", region="Gold Coast Hinterland", lat=-27.95028, lon=153.18104,
          height=548, mode="thermal", dirs=[[225, 315, "SW–NW"]], wind=[3, 6, 20, 28], rating="PG4", cta=7500,
          club="Canungra Hang Gliding Club", url="https://siteguide.org.au/Sites/Details/Mt.%20Tamborine",
@@ -145,12 +151,12 @@ NSW_SITES = [
     dict(id="crescent", name="Crescent Head", sub="S and E launches", region="Mid North Coast", lat=-31.1932, lon=152.9790,
          height=None, mode="ridge", dirs=[[90, 135, "E launch (E–SE)"], [135, 180, "S launch (SE–S)"]], wind=[15, 18, 30, 35],
          rating="S launch all levels · E launch experienced", club=None,
-         url="https://siteguide.org.au/Sites/Details/Crescent%20Head", bom=("94785", "Kempsey Airport"),
+         url="https://siteguide.org.au/Sites/Details/Crescent%20Head", bom=("94785", "Kempsey Airport"), bom_rep=False,
          tide=(-31.193, 153.01)),
     dict(id="borah", name="Mt Borah", sub="Manilla", region="North West Slopes", lat=-30.6793, lon=150.6116,
          height=850, mode="thermal", dirs=[[22.5, 67.5, "NE launch"], [67.5, 112.5, "E launch"], [135, 202.5, "S launch"], [225, 315, "W launch"]],
          wind=[3, 6, 20, 28], rating="PG2", club="Manilla Sky Sailors / flymanilla.com",
-         url="https://siteguide.org.au/Sites/Details/Manilla%20-%20Mt%20Borah", bom=("94761", "Barraba"), radar="IDR693",
+         url="https://siteguide.org.au/Sites/Details/Manilla%20-%20Mt%20Borah", bom=("94761", "Barraba"), bom_alt=[("95762", "Tamworth Airport")], radar="IDR693",
          note="World-renowned XC site with flatlands in front. The road to the top closes when wet."),
     dict(id="lakegeorge", name="Lake George", sub="Collector launch", region="Southern Tablelands", lat=-34.9699, lon=149.3748,
          height=910, mode="both", dirs=[[67.5, 112.5, "E"]], wind=[12, 16, 26, 32], rating="PG2",
@@ -226,7 +232,7 @@ def fetch_levels(sites, tz):
     for mid, key, _ in MODELS:
         if ONLY and key not in ONLY:
             continue
-        q = urllib.parse.urlencode(dict(latitude=lats, longitude=lons, hourly=",".join(LVARS), models=mid,
+        q = urllib.parse.urlencode(dict(latitude=lats, longitude=lons, hourly=",".join(LVARS), models=UPPER_SOURCE.get(key, mid),
                                         timezone=tz, forecast_days=DAYS, wind_speed_unit="kmh"))
         try:
             data = get_json("https://api.open-meteo.com/v1/forecast?" + q)
@@ -313,6 +319,20 @@ def fetch_models(sites, tz):
             out[key] = data
         except Exception as e:
             print("model failed", key, e, file=sys.stderr)
+            continue
+        if key in UPPER_SOURCE:
+            q2 = urllib.parse.urlencode(dict(latitude=lats, longitude=lons, hourly=",".join(UPPER_VARS), models=UPPER_SOURCE[key],
+                                             timezone=tz, forecast_days=DAYS, wind_speed_unit="kmh"))
+            try:
+                up = get_json("https://api.open-meteo.com/v1/forecast?" + q2)
+                up = up if isinstance(up, list) else [up]
+                for d, u in zip(out[key], up):
+                    pos = {t: i for i, t in enumerate(u["hourly"]["time"])}
+                    for v in UPPER_VARS:
+                        src = u["hourly"].get(v) or []
+                        d["hourly"][v] = [src[pos[t]] if t in pos and pos[t] < len(src) else None for t in d["hourly"]["time"]]
+            except Exception as e:
+                print("upper-air failed", key, e, file=sys.stderr)
     return out
 
 
@@ -347,7 +367,12 @@ def fetch_tides(sites, tz):
 
 def fetch_obs():
     res = {}
-    for prod, wmo in sorted({(STATES[s.get("state", "qld")][1], s["bom"][0]) for s in SITES}):
+    wanted = set()
+    for s in SITES:
+        prod = STATES[s.get("state", "qld")][1]
+        for st in [s["bom"]] + s.get("bom_alt", []):
+            wanted.add((prod, st[0]))
+    for prod, wmo in sorted(wanted):
         # metro-area stations publish under the x60901 product, the rest of the state under x60801
         d = None
         for pr in (prod, prod.replace("60901", "60801")):
@@ -364,6 +389,69 @@ def fetch_obs():
         except Exception as e:
             print("obs failed", wmo, e, file=sys.stderr)
     return res
+
+
+def obs_age_h(rows, tz):
+    """Hours since a station's latest reading (rows carry local station time)."""
+    if not rows or not rows[0].get("t"):
+        return None
+    try:
+        from zoneinfo import ZoneInfo
+        t = datetime.strptime(rows[0]["t"], "%Y%m%d%H%M%S").replace(tzinfo=ZoneInfo(tz))
+        return round((datetime.now(timezone.utc) - t).total_seconds() / 3600, 1)
+    except Exception:
+        return None
+
+
+def pick_station(s, obs_page, obs):
+    """Primary BOM station unless it is stale or empty; then the first fresh backup."""
+    tz = STATES[s.get("state", "qld")][0]
+    choices = [s["bom"]] + s.get("bom_alt", [])
+    best = None
+    for wmo, name in choices:
+        rows = obs.get(wmo, [])
+        age = obs_age_h(rows, tz)
+        cand = dict(id=wmo, name=name, page=obs_page, obs=rows, age_h=age, rep=s.get("bom_rep", True),
+                    backup=(wmo != s["bom"][0]))
+        if age is not None and age <= STALE_OBS_H:
+            return cand
+        if best is None or (age is not None and (best["age_h"] is None or age < best["age_h"])):
+            best = cand
+    return best
+
+
+def quality_check(data):
+    """Return (fatal_problems, warnings). Fatal problems stop the old data being overwritten."""
+    fatal, warn = [], []
+    by_state = {}
+    for s in data["sites"]:
+        by_state.setdefault(s["state"], []).append(s)
+        n = len(s["t"])
+        if n < 60:
+            fatal.append(f"{s['id']}: only {n} forecast hours")
+            continue
+        for k in ("ws", "wd", "t", "pr"):
+            miss = sum(v is None for v in s["c"].get(k, [None] * n))
+            if miss > n * 0.1:
+                fatal.append(f"{s['id']}: {k} missing for {miss}/{n} hours")
+        if s.get("wl") and sum(v is None for v in s["c"]["wsl"]) > n * 0.1:
+            warn.append(f"{s['id']}: launch-height wind missing for some hours")
+        for k, hi in (("ws", 150), ("wsl", 200), ("wg", 220), ("t", 50)):
+            vals = [v for v in s["c"].get(k, []) if v is not None]
+            if vals and (max(vals) > hi or min(vals) < (-20 if k == "t" else 0)):
+                fatal.append(f"{s['id']}: {k} out of range ({min(vals)}..{max(vals)})")
+        if s["bom"] is None or s["bom"]["age_h"] is None:
+            warn.append(f"{s['id']}: no station observations")
+        elif s["bom"]["age_h"] > STALE_OBS_H:
+            warn.append(f"{s['id']}: station {s['bom']['name']} last reported {s['bom']['age_h']} h ago")
+    ok = [m for m in data["models"] if m["ok"]]
+    if len(ok) < 2:
+        fatal.append(f"only {len(ok)} weather model(s) returned data")
+    for st, group in by_state.items():
+        per = {k for s in group for k in s["m"]}
+        if len(per) < 2:
+            fatal.append(f"{st}: only {len(per)} model(s)")
+    return fatal, warn
 
 
 def build():
@@ -457,7 +545,7 @@ def build_state(state, tz, obs_page, sites, obs, ok_models):
                  wl=("band" if (s.get("height") or 0) >= INLAND_MIN else "coast") if "wsl" in cons else None, elev=elev, mode=s["mode"], dirs=s["dirs"], wind=s["wind"], rating=s["rating"],
                  club=s["club"], url=s["url"], cta=s.get("cta"), note=s.get("note"), holfuy=s.get("holfuy"),
                  state=state, tz=tz, radar=s.get("radar"),
-                 bom=dict(id=s["bom"][0], name=s["bom"][1], page=obs_page, obs=obs.get(s["bom"][0], [])),
+                 bom=pick_station(s, obs_page, obs),
                  tide=tides.get(s["id"]), tide_note=s.get("tide_note"), t=times_out, c=cons, m=mod)
         sites_out.append(o)
     return sites_out
@@ -466,6 +554,14 @@ def build_state(state, tz, obs_page, sites, obs, ok_models):
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "forecast.json"
     data = build()
+    fatal, warn = quality_check(data)
+    data["qa"] = dict(warnings=warn)
+    for w in warn:
+        print("warning:", w)
+    if fatal:
+        for p in fatal:
+            print("QUALITY CHECK FAILED:", p, file=sys.stderr)
+        sys.exit("forecast.json not updated: data failed quality checks")
     with open(out, "w") as f:
         json.dump(data, f, separators=(",", ":"))
     ok = [m["key"] for m in data["models"] if m["ok"]]

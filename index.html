@@ -405,7 +405,8 @@ function renderStatus(){
   const when=g.toLocaleString("en-AU",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"Australia/Brisbane"});
   document.getElementById("status").innerHTML =
     `<span>Updated ${esc(when)} AEST${ageH>7?` <span class="flag">(${Math.round(ageH)} h old)</span>`:""}${S.state==="nsw"?` · NSW times in ${esc(new Date().toLocaleTimeString("en-AU",{timeZone:"Australia/Sydney",timeZoneName:"short"}).split(" ").pop())}`:""}</span>`+
-    S.data.models.map(m=>`<span class="chip" title="${esc(m.id)}"><span class="dot${m.ok?"":" off"}"></span>${esc(m.label)}</span>`).join("");
+    S.data.models.map(m=>`<span class="chip" title="${esc(m.id)}"><span class="dot${m.ok?"":" off"}"></span>${esc(m.label)}</span>`).join("")+
+    (S.data.qa&&S.data.qa.warnings&&S.data.qa.warnings.length?`<span class="chip" title="${esc(S.data.qa.warnings.join("\n"))}"><span class="dot off"></span>${S.data.qa.warnings.length} data note${S.data.qa.warnings.length>1?"s":""}</span>`:"");
 }
 
 function renderGrid(){
@@ -468,7 +469,7 @@ function siteCard(s,dc){
 // compare the latest station reading with the forecast for the same hour (coastal sites only:
 // inland stations sit in valleys and do not represent launch wind)
 function nowcast(s,o){
-  if(s.wl!=="coast"||!o.t||o.ws==null) return "";
+  if(s.wl!=="coast"||!o.t||o.ws==null||s.bom.rep===false||(s.bom.age_h!=null&&s.bom.age_h>3)) return "";
   const key=`${o.t.slice(0,4)}-${o.t.slice(4,6)}-${o.t.slice(6,8)}T${o.t.slice(8,10)}:00`;
   const i=s.t.indexOf(key); if(i<0) return "";
   const fc=s.c.wsl[i]; if(fc==null) return "";
@@ -505,6 +506,9 @@ function detailHTML(s,dc){
   if(ob.length){
     const o=ob[0]; const tt=o.t?`${o.t.slice(8,10)}:${o.t.slice(10,12)}`:"";
     obsHTML=`<div class="mono">${esc(o.dir||"–")} ${W(o.ws)}${o.wg!=null?` gusts ${W(o.wg)}`:""} ${WU()} · ${fmt(o.temp,1)}°C · ${fmt(o.rh)}% RH</div>
+      ${s.bom.age_h!=null&&s.bom.age_h>3?`<span class="flag">Station last reported ${s.bom.age_h<48?Math.round(s.bom.age_h)+" hours":Math.round(s.bom.age_h/24)+" days"} before this update; it may be offline.</span>`:""}
+      ${s.bom.backup?`<span class="note">Main station is not reporting, so this is the nearest backup.</span>`:""}
+      ${s.bom.rep===false?`<span class="note">This station is inland of the site, so its wind is a rough guide only.</span>`:""}
       <span class="note">As at ${esc(tt)} on refresh. Trend: ${ob.slice(0,6).reverse().map(x=>`${x.dir||"–"} ${W(x.ws)}`).map(esc).join(" → ")}</span>${nowcast(s,o)}`;
   }
   // tides
