@@ -254,8 +254,9 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
   <details class="howto">
     <summary>How the scores work</summary>
     <p><b>Coastal and ridge soaring</b> scores wind direction against each launch's flyable arc, wind strength against the site's soaring range, gust spread, rain and storm risk.</p>
+    <p><b>Thermal strength</b> is estimated the way soaring forecasts such as RASP and SkySight do: from the sun's heating, how deep the convective layer is, and how dry the ground air is (dry air means more of the sun's energy goes into heating the air rather than evaporating moisture, so stronger thermals). Around 1.2 m/s is workable, 1.8 good and 2.5+ strong. Paragliders sink at about 1 m/s, so climbs are roughly thermal strength minus 1.</p>
     <p><b>Cloud and moisture:</b> a "Cumulus" day means thermals are forecast to reach the condensation level (cloudbase), so cu mark the lift; a "Blue" day means they top out in dry air below it. Sunshine is reduced by low, mid and high cloud (high cloud counts least). Humid air near cloudbase (80%+ at about 1,500 m) flags cu that may spread out; humid air higher up (60%+ at about 3,000 m) with some instability flags overdevelopment. Both trim the thermal score. Dry air aloft keeps cu from growing into showers.</p>
-    <p><b>Thermal and XC</b> scores (09:00–17:00) use usable lift height (lower of the boundary layer top and estimated cloudbase), the 850–700 hPa lapse rate, sunshine, wind at about 1,500 m, launch wind, and storm risk from CAPE and rain chance. "Top of lift" is shown in feet above sea level, capped where the site has a CTA ceiling.</p>
+    <p><b>Thermal and XC</b> scores (09:00–17:00) use thermal strength, usable lift height (lower of the boundary layer top and estimated cloudbase), sunshine, wind at about 1,500 m, launch wind, and storm risk from CAPE and rain chance. "Top of lift" is shown in feet above sea level, capped where the site has a CTA ceiling.</p>
     <p><b>Coastal wind height:</b> coastal sites are scored on the models' 80 m wind (about cliff and soaring height). Checked against exposed BOM stations such as the 96 m Double Island Point lighthouse, the models' 10 m wind on coastal cells read 1.2–2 times too light, while the 80 m wind was close to what was observed. The hour table shows both. A wind up to one compass point (22.5°) outside a launch's arc counts as "cross" and halves the score.</p>
     <p><b>Launch height:</b> for hill launches (200 m and higher) the score uses the forecast wind in the band from launch height to 300 m above it, built from each model's winds at several heights, rather than the 10 m ground wind, which describes the model's smoothed valley terrain. The hour table shows both. Gusts add the model's ground gust spread on top. Coastal launches use the 10 m wind. "Top of lift" is given above sea level and above launch.</p>
     <p><b>Model agreement</b> re-scores the launch wind using each model separately (ECMWF, GFS, ICON, UK Met Office). Low agreement means treat the day as uncertain, especially 4+ days out.</p>
@@ -284,10 +285,10 @@ function dirFactor(site,wd,ws,light){
   if(wd==null) return {f:0,label:null};
   let best=0,label=null;
   for(const [a,b,name] of site.dirs){
-    let f; if(inArc(wd,a,b)) f=1; else { const d=Math.min(angDist(wd,a),angDist(wd,b)); f=d<=22.5?.5:d<=35?.2:0; }
+    let f; if(inArc(wd,a,b)) f=1; else { const d=Math.min(angDist(wd,a),angDist(wd,b)); f=Math.max(0,1-d/45); } // smooth fall-off: 22.5° off = half, 45° off = zero
     if(f>best){best=f;label=name;}
   }
-  if(light && ws!=null && ws<6) best=Math.max(best,.7);
+  if(light && ws!=null && ws<8) best=Math.max(best,.75); // thermal sites: light wind can be launched from most directions
   return {f:best,label};
 }
 function speedF(ws,[mn,lo,hi,mx]){
@@ -318,7 +319,7 @@ function hourCalc(site,i){
     ridge=100*dirInfo.f*speedF(ws,site.wind)*gustF(ws,wg,site.wind[3])*rainF(pr,pp)*stormF;
   }
   // thermal
-  let thermal=0, top=null, usable=null, lapse=null;
+  let thermal=0, top=null, usable=null, lapse=null, wstar=null;
   const cb = (t!=null&&td!=null)? Math.max(0,(t-td)*125):null;
   usable = blh!=null && cb!=null ? Math.min(blh,cb) : (blh??cb);
   // cloud & moisture: cumulus forms when thermals reach the condensation level; otherwise a blue day
@@ -338,12 +339,18 @@ function hourCalc(site,i){
     const spd = ws==null?0: ws>mx?0: ws>hi? 1-.6*(ws-hi)/Math.max(1,mx-hi):1;
     const gf = wg!=null&&ws!=null&&wg-ws>15?.6:1;
     const hF = usable==null?0:clamp((usable-400)/1400,0,1);
-    const lF = lapse==null?.6:clamp((lapse-4)/3,.15,1);
+    // Thermal strength: Deardorff convective velocity w* from sunshine, boundary-layer depth and
+    // ground dryness (drier ground puts more of the sun's energy into heating the air, so stronger thermals).
+    // (The 850-700 hPa lapse rate sits mostly above the boundary layer, so it is shown but not used here.)
+    const dryness = t!=null&&td!=null ? clamp(((t-td)-5)/15,0,1) : .5;
+    const H = sw*(1-shade/100*.3)*(.25+.2*dryness);          // sensible heat flux, W/m²
+    wstar = blh!=null&&t!=null&&H>0 ? Math.cbrt(9.81/(t+273.15)*(H/1206)*blh) : null;
+    const tF = wstar==null?.4:clamp((wstar-1.0)/1.6,0,1);   // ~2.6 m/s or more counts as full strength
     // shade from all cloud layers: high cloud is thinner, so it counts for less
-    const sF = clamp(sw/650,0,1)*(1-.6*clamp((shade-50)/50,0,1));
+    const sF = 1-.6*clamp((shade-50)/50,0,1);
     const aF = w850==null?1: w850<=20?1: w850<=35? 1-.6*(w850-20)/15 : w850<=45?.3:0;
     const cloudF = (spread?.85:1)*(overdev?.8:1);
-    thermal=100*d.f*spd*gf*Math.pow(hF,.7)*Math.sqrt(lF*sF)*aF*cloudF*rainF(pr,pp)*stormF;
+    thermal=100*d.f*spd*gf*Math.pow(hF,.7)*Math.pow(tF,.8)*sF*aF*cloudF*rainF(pr,pp)*stormF;
     if(spread) flags.push("Cu may spread out");
     if(overdev) flags.push("Overdevelopment risk");
     if(shade>=70 && lcc<50) flags.push("High/mid cloud shading");
@@ -365,7 +372,7 @@ function hourCalc(site,i){
     const sf= kind==="thermal" ? (mws<=site.wind[3]?1:0) : speedF(mws,site.wind);
     if(df*sf*(kind==="thermal"?1:gustF(mws,mwg,site.wind[3]))*rainF(mpr,0) >= .55) agree++;
   }
-  return {i,hr,score,kind,ridge,thermal,ws,wd,wg,ws10,wd10,atLaunch:L,pr,pp,cape,top,usable,lapse,w850,d850:c("d850"),lcc,mcc,hcc,shade,cu,cb,rh850,rh700,dryAloft,spread,overdev,flags,dir:dirInfo,agree,n,storm};
+  return {i,hr,score,kind,ridge,thermal,ws,wd,wg,ws10,wd10,atLaunch:L,pr,pp,cape,top,usable,lapse,w850,d850:c("d850"),wstar,lcc,mcc,hcc,shade,cu,cb,rh850,rh700,dryAloft,spread,overdev,flags,dir:dirInfo,agree,n,storm};
 }
 
 function dayCalc(site,date){
@@ -452,11 +459,13 @@ function keyline(s,dc){
   const p=dc.peak; const parts=[];
   if(dc.verdict!=="no") parts.push(`<span><b>${String(dc.start).padStart(2,"0")}:00–${String(dc.end).padStart(2,"0")}:00</b></span>`);
   parts.push(`<span class="mono">${arrow(p.wd)} ${comp(p.wd)} ${W(p.ws)}${p.wg!=null?` gusts ${W(p.wg)}`:""} ${WU()}</span>`);
-  if(p.kind==="thermal"||s.mode==="thermal"){ parts.push(`<span>Lift to <b class="mono">${p.top?topText(s,p.top):"–"}</b></span>`); if(p.cu!=null) parts.push(`<span>${p.cu?"Cumulus":"Blue"}</span>`); }
+  if(p.kind==="thermal"||s.mode==="thermal"){ parts.push(`<span>Lift to <b class="mono">${p.top?topText(s,p.top):"–"}</b></span>`); if(p.wstar!=null) parts.push(`<span>Thermals <b class="mono">${TH(p.wstar)}</b></span>`); if(p.cu!=null) parts.push(`<span>${p.cu?"Cumulus":"Blue"}</span>`); }
   if(p.dir.label && s.dirs.length>1) parts.push(`<span>${esc(p.dir.label)}</span>`);
   for(const f of dc.flags) parts.push(`<span class="flag">${esc(f)}</span>`);
   return parts.join("");
 }
+// thermal strength: m/s, or knots when wind is shown in knots (1 m/s = 1.94 kt)
+const TH=v=>v==null?"–":U.w==="kt"?`${(v*1.944).toFixed(1)} kt`:`${v.toFixed(1)} m/s`;
 // units: heights are stored in feet (lift) or metres (launch); wind in km/h
 const U={h:"ft",w:"kmh"};
 const W=v=>v==null||isNaN(v)?"–":String(Math.round(U.w==="kt"?v/1.852:v));
@@ -511,7 +520,7 @@ function detailHTML(s,dc){
   const coast = s.wl==="coast" && s.c.wsl;
   const twoWinds = band || coast;
   let rows=dc.hrs.map(h=>{
-    const ok=h.dir.f>=1?"y":h.dir.f>=.5?"m":"n";
+    const ok=h.dir.f>=.88?"y":h.dir.f>=.4?"m":"n";
     const okTxt=!s.dirs.length?"":`<span class="dirok ${ok}">${ok==="y"?"on":ok==="m"?"cross":"off"}</span>`;
     const col=h.score>=60?"var(--go)":h.score>=35?"var(--maybe)":"var(--no)";
     const models=mk.map(k=>{const m=s.m[k];const l=m.wsl&&m.wsl[h.i]!=null;const sp=l?m.wsl[h.i]:m.ws[h.i], dd=l?m.wdl[h.i]:m.wd[h.i];return sp==null?"–":`${W(sp)}${comp(dd)}`}).join(" · ");
@@ -520,10 +529,10 @@ function detailHTML(s,dc){
       <td>${arrow(h.wd)}${comp(h.wd)} ${W(h.ws)}${h.wg!=null?` gusts ${W(h.wg)}`:""} ${okTxt}</td>
       ${twoWinds?`<td class="models">${comp(h.wd10)} ${W(h.ws10)}</td>`:""}
       <td class="models">${models}</td>
-      ${thermalCols?`<td>${h.top?topText(s,h.top):"–"}</td><td>${h.cu==null?"–":h.cu?`Cu base ${Hft((((s.height??s.elev??0))+h.cb)*3.281)}`:"Blue"}${h.spread?` <span class="flag">spread</span>`:""}${h.overdev?` <span class="flag">OD</span>`:""}</td><td>${fmt(h.rh850)}% / ${fmt(h.rh700)}%</td><td>${fmt(h.lapse,1)}</td><td>${h.w850!=null?`${comp(h.d850)} ${W(h.w850)}`:"–"}</td>`:""}
+      ${thermalCols?`<td>${h.top?topText(s,h.top):"–"}</td><td>${h.hr>=9&&h.hr<=17?TH(h.wstar):"–"}</td><td>${h.cu==null?"–":h.cu?`Cu base ${Hft((((s.height??s.elev??0))+h.cb)*3.281)}`:"Blue"}${h.spread?` <span class="flag">spread</span>`:""}${h.overdev?` <span class="flag">OD</span>`:""}</td><td>${fmt(h.rh850)}% / ${fmt(h.rh700)}%</td><td>${fmt(h.lapse,1)}</td><td>${h.w850!=null?`${comp(h.d850)} ${W(h.w850)}`:"–"}</td>`:""}
       <td>${fmt(h.lcc)} / ${fmt(h.mcc)} / ${fmt(h.hcc)}%</td><td>${h.pr>=.1?fmt(h.pr,1)+" mm":"–"} ${h.pp?`<span class="models">${fmt(h.pp)}%</span>`:""}</td><td>${h.cape>=300?`<span class="${h.storm?"flag":""}">${fmt(h.cape)}</span>`:fmt(h.cape)}</td></tr>`;
   }).join("");
-  const head=`<tr><th>Time</th><th>Score</th><th>${band?`Wind at launch +0–${Hm(band)} (${WU()})`:coast?`Wind at ~${Hm(80)} (${WU()})`:`Wind ${WU()}`}</th>${band?"<th>Ground wind</th>":coast?"<th>10 m model wind</th>":""}<th>Models (${mk.map(k=>mname[k]).join(" · ")})</th>${thermalCols?"<th>Top of lift</th><th>Sky</th><th>Humidity 1.5 / 3 km</th><th>Lapse °C/km</th><th>850 hPa wind</th>":""}<th>Cloud low / mid / high</th><th>Rain</th><th>CAPE</th></tr>`;
+  const head=`<tr><th>Time</th><th>Score</th><th>${band?`Wind at launch +0–${Hm(band)} (${WU()})`:coast?`Wind at ~${Hm(80)} (${WU()})`:`Wind ${WU()}`}</th>${band?"<th>Ground wind</th>":coast?"<th>10 m model wind</th>":""}<th>Models (${mk.map(k=>mname[k]).join(" · ")})</th>${thermalCols?"<th>Top of lift</th><th>Thermals</th><th>Sky</th><th>Humidity 1.5 / 3 km</th><th>Lapse °C/km</th><th>850 hPa wind</th>":""}<th>Cloud low / mid / high</th><th>Rain</th><th>CAPE</th></tr>`;
 
   // observations
   const ob=s.bom.obs||[];
@@ -542,7 +551,7 @@ function detailHTML(s,dc){
     const ex=s.tide.ext.filter(x=>x[0].startsWith(dc.date));
     tideHTML=`<div class="box"><h4>Tides ${esc(dayLabel(dc.date))}</h4><div class="mono">${ex.map(x=>`${x[1]==="H"?"High":"Low"} ${x[0].slice(11,16)} (${x[2]>0?"+":""}${x[2]} m)`).join("<br>")||"–"}</div>${s.tide_note?`<span class="note">${esc(s.tide_note)}</span>`:""}<span class="note">Modelled sea level; check official tide tables for exact times.</span></div>`;
   }
-  const xc = s.mode!=="ridge" && dc.peak.d850!=null ? `<div class="box"><h4>XC outlook</h4><div>Top of lift around <b>${dc.peak.top?topText(s,dc.peak.top):"–"}</b>${dc.peak.usable!=null&&s.height!=null?`, roughly ${Hft(dc.peak.usable*3.281)} above launch`:""}${s.cta?` (CTA ${s.cta.toLocaleString()} ft)`:""}. Wind at about ${Hft(1500*3.281)} from the ${comp(dc.peak.d850)} at ${W(dc.peak.w850)} ${WU()}, so drift heads ${comp((dc.peak.d850+180)%360)}.</div><div>${skyText(s,dc)}</div><span class="note">Lapse rate ${fmt(dc.peak.lapse,1)} °C/km (above 6.5 is lively). Humidity at about ${Hft(1500*3.281)} ${fmt(dc.peak.rh850)}%, at about ${Hft(3000*3.281)} ${fmt(dc.peak.rh700)}%. CAPE ${fmt(dc.peak.cape)} J/kg.</span></div>`:"";
+  const xc = s.mode!=="ridge" && dc.peak.d850!=null ? `<div class="box"><h4>XC outlook</h4><div>${dc.peak.wstar!=null?`Thermals around <b>${TH(dc.peak.wstar)}</b> (${dc.peak.wstar>=2.5?"strong":dc.peak.wstar>=1.8?"good":dc.peak.wstar>=1.2?"workable":"weak"}). `:""}Top of lift around <b>${dc.peak.top?topText(s,dc.peak.top):"–"}</b>${dc.peak.usable!=null&&s.height!=null?`, roughly ${Hft(dc.peak.usable*3.281)} above launch`:""}${s.cta?` (CTA ${s.cta.toLocaleString()} ft)`:""}. Wind at about ${Hft(1500*3.281)} from the ${comp(dc.peak.d850)} at ${W(dc.peak.w850)} ${WU()}, so drift heads ${comp((dc.peak.d850+180)%360)}.</div><div>${skyText(s,dc)}</div><span class="note">Lapse rate above the boundary layer ${fmt(dc.peak.lapse,1)} °C/km (higher means less capping). Humidity at about ${Hft(1500*3.281)} ${fmt(dc.peak.rh850)}%, at about ${Hft(3000*3.281)} ${fmt(dc.peak.rh700)}%. CAPE ${fmt(dc.peak.cape)} J/kg.</span></div>`:"";
   const radar = s.radar || (stateOf(s)==="qld" ? (s.lat>-26.9 && s.lon>152.6 ? "IDR663" : s.lon<152.5 ? "IDR503" : "IDR663") : null);
   const links=[
     [s.url,"Site guide / club page"],
