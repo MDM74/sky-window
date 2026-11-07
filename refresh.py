@@ -28,7 +28,8 @@ ONLY = [m for m in os.environ.get("SKYWINDOW_MODELS", "").split(",") if m]  # te
 # (850/700 hPa wind, temperature, heights, and the launch-band profile) come from its 0.25 deg run.
 UPPER_SOURCE = {"ec": "ecmwf_ifs025"}
 UPPER_VARS = ["wind_speed_850hPa", "wind_direction_850hPa", "temperature_850hPa", "temperature_700hPa",
-              "geopotential_height_850hPa", "geopotential_height_700hPa"]
+              "geopotential_height_850hPa", "geopotential_height_700hPa",
+              "relative_humidity_850hPa", "relative_humidity_700hPa"]
 STALE_OBS_H = 3          # a station reading older than this is treated as stale
 MODELS = [  # (open-meteo id, short key, label)
     ("ecmwf_ifs", "ec", "ECMWF IFS 9 km"),
@@ -171,11 +172,13 @@ SITES = SITES + NSW_SITES
 VARS = ["wind_speed_10m", "wind_direction_10m", "wind_speed_80m", "wind_direction_80m", "wind_gusts_10m", "temperature_2m", "dew_point_2m",
         "cloud_cover_low", "cloud_cover", "precipitation", "precipitation_probability", "cape",
         "boundary_layer_height", "shortwave_radiation", "wind_speed_850hPa", "wind_direction_850hPa",
-        "temperature_850hPa", "temperature_700hPa", "geopotential_height_850hPa", "geopotential_height_700hPa"]
+        "temperature_850hPa", "temperature_700hPa", "geopotential_height_850hPa", "geopotential_height_700hPa",
+        "cloud_cover_mid", "cloud_cover_high", "relative_humidity_850hPa", "relative_humidity_700hPa"]
 SHORT = dict(wind_speed_10m="ws", wind_direction_10m="wd", wind_speed_80m="ws80", wind_direction_80m="wd80", wind_gusts_10m="wg", temperature_2m="t", dew_point_2m="td",
              cloud_cover_low="lcc", cloud_cover="cc", precipitation="pr", precipitation_probability="pp", cape="cape",
              boundary_layer_height="blh", shortwave_radiation="sw", wind_speed_850hPa="w850", wind_direction_850hPa="d850",
-             temperature_850hPa="t850", temperature_700hPa="t700", geopotential_height_850hPa="z850", geopotential_height_700hPa="z700")
+             temperature_850hPa="t850", temperature_700hPa="t700", geopotential_height_850hPa="z850", geopotential_height_700hPa="z700",
+             cloud_cover_mid="mcc", cloud_cover_high="hcc", relative_humidity_850hPa="rh850", relative_humidity_700hPa="rh700")
 DIRVARS = {"wd", "d850", "wd80"}
 DIRSPEED = {"wd": "wind_speed_10m", "d850": "wind_speed_850hPa", "wd80": "wind_speed_80m"}
 MVARS = ("ws", "wd", "wg", "pr", "blh", "cape", "lcc", "ws80", "wd80")
@@ -496,7 +499,7 @@ def build_state(state, tz, obs_page, sites, obs, ok_models):
                     sp = {k: per[k]["hourly"].get(spv, [None] * len(times))[i] for k in keys}
                     cons[sk].append(vec_mean([x for _, x in good], [sp[k] for k, _ in good]))
                 else:
-                    cons[sk].append(r1(sum(x for _, x in good) / len(good), 0 if sk in ("cape", "blh", "sw", "z850", "z700", "lcc", "cc", "pp") else 1) if good else None)
+                    cons[sk].append(r1(sum(x for _, x in good) / len(good), 0 if sk in ("cape", "blh", "sw", "z850", "z700", "lcc", "cc", "pp", "mcc", "hcc", "rh850", "rh700") else 1) if good else None)
                 if sk in MVARS:
                     for k, x in vals:
                         mod[k][sk].append(None if x is None else (round(x) if sk in ("wd", "blh", "cape", "lcc") else r1(x)))
