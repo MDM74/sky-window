@@ -3,7 +3,7 @@
 Paragliding forecast dashboard for South-East Queensland and New South Wales sites. `index.html` is the page,
 `forecast.json` is the data, and `refresh.py` rebuilds the data from Open-Meteo (ECMWF, GFS,
 ICON, UK Met Office), Open-Meteo Marine tides and Bureau of Meteorology observations.
-A GitHub Action runs `refresh.py` every 3 hours and commits the new `forecast.json`.
+A GitHub Action tries hourly; `refresh.py` skips itself unless the forecast is over about 2.4 hours old, so it refreshes roughly every 3 hours and commits the new `forecast.json`.
 
 ## One-time setup (about 10 minutes)
 1. Sign up at https://github.com (free).

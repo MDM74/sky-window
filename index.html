@@ -151,6 +151,8 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
 .states button[aria-selected="true"]{border-bottom-color:var(--accent)}
 .states button[aria-selected="true"] b{font-weight:700}
 .states button:hover b{color:var(--accent)}
+.safety{margin:0;font-size:.84rem;line-height:1.4;background:var(--risk-bg);color:var(--ink);border-left:4px solid var(--risk);border-radius:6px;padding:8px 12px;max-width:none}
+.site-rule{font-size:.84rem;background:var(--maybe-bg);border-radius:6px;padding:7px 10px}
 .wk-none{font-size:.85rem;color:var(--muted);padding:8px 0}
 .map .land{fill:var(--landfill);stroke:var(--coast);stroke-width:.7}
 .map .border{fill:none;stroke:var(--muted);stroke-width:.8;stroke-dasharray:4 3;opacity:.7}
@@ -198,6 +200,8 @@ svg.map{width:100%;height:auto;display:block;margin-inline:auto;border-radius:8p
       </div>
     </div>
   </header>
+
+  <p class="safety" role="note"><b>Planning aid only.</b> Paragliding is dangerous and conditions change fast. Scores come from weather models, not from anyone on launch. Always assess conditions on site, follow SAFA and club site rules, fly within your rating, and get a briefing from the duty pilot or safety officer.</p>
 
   <nav class="states" id="states" role="tablist" aria-label="Choose a state"></nav>
 
@@ -556,12 +560,14 @@ function detailHTML(s,dc){
   const links=[
     [s.url,"Site guide / club page"],
     s.holfuy?[`https://holfuy.com/en/weather/${s.holfuy}`,"Live wind on launch (Holfuy)"]:null,
+    s.live?[s.live[1],`Live wind on launch (${s.live[0]})`]:null,
     [`https://www.bom.gov.au/products/${s.bom.page||"IDQ60801"}/${s.bom.page||"IDQ60801"}.${s.bom.id}.shtml`,`BOM obs: ${s.bom.name}`],
-    [radar?`https://www.bom.gov.au/products/${radar}.loop.shtml`:"https://www.bom.gov.au/australia/radar/", "BOM radar loop"],
+    [radar?`https://www.bom.gov.au/products/${radar}.loop.shtml`:"https://www.bom.gov.au/weather-and-climate/rain-radar-and-weather-maps", "BOM radar loop"],
     [`https://www.windy.com/${s.lat}/${s.lon}?${s.lat},${s.lon},11`,"Windy"],
-    s.wl==="coast"?["https://www.bom.gov.au/marine/","BOM coastal wind forecast"]:null,
-    ["https://xcskies.com/","XC Skies"],
-    ["https://skysight.io/","SkySight (subscribers)"],
+    s.wl==="coast"?["https://www.bom.gov.au/coastal-location/australia","BOM coasts and marine forecasts"]:null,
+    ["https://xcskies.com/","XC Skies soaring forecast"],
+    ["https://skysight.io/","SkySight soaring forecast (subscribers)"],
+    ["https://safa.asn.au/","SAFA rules and membership"],
   ].filter(Boolean);
   return `<div class="facts">
       <span class="chip" ${s.height_note?`title="${esc(s.height_note)}"`:""}>Launch ${s.height!=null?(s.height_note?"≈":"")+Hm(s.height)+" ASL":(s.elev!=null?"≈"+Hm(s.elev)+" (terrain)":"–")}</span>
@@ -570,7 +576,7 @@ function detailHTML(s,dc){
       ${s.club?`<span class="chip">${esc(s.club)}</span>`:""}
       ${s.cta?`<span class="chip">CTA ${s.cta.toLocaleString()} ft${U.h==="m"?` (${Math.round(s.cta/3.281/10)*10} m)`:""}</span>`:""}
     </div>
-    ${s.note?`<div class="note">${esc(s.note)}</div>`:""}
+    ${s.note?`<div class="site-rule"><b>Site notes:</b> ${esc(s.note)}</div>`:""}
     <div class="table-scroll"><table class="hours"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
     <div class="cols">
       ${xc}

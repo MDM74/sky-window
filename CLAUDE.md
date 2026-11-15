@@ -10,9 +10,11 @@ in plain language, and keep the public page free of internal notes or "ask Claud
 - `refresh.py` (Python stdlib only) fetches data and writes `forecast.json`. Scoring is NOT done here.
 - `index.html` is the whole site: one self-contained page (inline CSS/JS, Google Fonts only) that
   reads `forecast.json` and does all scoring in the browser, so thresholds can change without a refresh.
-- `.github/workflows/refresh.yml` runs `refresh.py` every 3 hours (cron `17 */3 * * *` UTC, often
-  starts late) and commits `forecast.json`; push retries 3 times. Run it by hand from the Actions tab
-  or `gh api -X POST repos/MDM74/sky-window/actions/workflows/refresh.yml/dispatches -f ref=main`.
+- `.github/workflows/refresh.yml` is scheduled hourly (cron `17 * * * *` UTC) because GitHub drops many
+  scheduled runs. `refresh.py` skips itself when the published forecast is under `MIN_REFRESH_H` (2.4 h)
+  old, so real refreshes happen about every 3 hours. Manual runs set `SKYWINDOW_FORCE=1` and always
+  refresh: Actions tab, or `gh api -X POST repos/MDM74/sky-window/actions/workflows/refresh.yml/dispatches -f ref=main`.
+  Push retries 3 times.
 - GitHub Pages serves the `main` branch root. Repo must stay public (Pages is free only for public repos).
 - `refresh.py` runs `quality_check()` before writing. Fatal problems (fewer than 2 models, >10% missing
   hours, impossible values) exit non-zero so the previous forecast stays live. Warnings go into
@@ -70,6 +72,13 @@ club, BOM station, optional tide point, radar, CTA ceiling and notes. Mt Barney 
   lapse-rate factor flooring thermal scores → replaced with w*. Re-scored 90.
 - Verification (3–7 Nov): 80 m coastal forecasts within ~10% of exposed-station winds on average,
   direction errors ~15–22°. Rainbow is the noisiest site (headland station).
+
+## Link and site audit (15 Nov 2026)
+
+All page links and all 27 sites were re-checked against the SAFA site guide (KML export at
+siteguide.org.au/Kml/Open and /Kml/Closed) and club pages; all sites were open. Each site can carry
+`live` (FreeFlight Wx launch station link), `holfuy`, `radar` and `note` (access/safety rules shown as
+"Site notes"). Repeat this audit every few months: sites close and rules change.
 
 ## Open items
 

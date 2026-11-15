@@ -1,7 +1,8 @@
 name: Refresh forecast
 on:
   schedule:
-    - cron: "17 */3 * * *"
+    # Tried hourly because GitHub skips many scheduled runs; refresh.py skips itself when data is under ~2.4 h old.
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 permissions:
   contents: write
@@ -15,6 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Fetch forecasts
+        env:
+          SKYWINDOW_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
         run: python3 refresh.py forecast.json
       - name: Commit new data
         run: |

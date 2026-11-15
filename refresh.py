@@ -30,6 +30,7 @@ UPPER_SOURCE = {"ec": "ecmwf_ifs025"}
 UPPER_VARS = ["wind_speed_850hPa", "wind_direction_850hPa", "temperature_850hPa", "temperature_700hPa",
               "geopotential_height_850hPa", "geopotential_height_700hPa",
               "relative_humidity_850hPa", "relative_humidity_700hPa"]
+MIN_REFRESH_H = 2.4      # do not refetch if the published forecast is younger than this
 STALE_OBS_H = 3          # a station reading older than this is treated as stale
 MODELS = [  # (open-meteo id, short key, label)
     ("ecmwf_ifs", "ec", "ECMWF IFS 9 km"),
@@ -45,27 +46,27 @@ SITES = [
          height=90, mode="ridge", dirs=[[0, 67.5, "N–ENE"]], wind=[15, 18, 30, 36], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/rainbow-beach/",
          bom=("94584", "Double Island Point"), tide=(-25.905, 153.13), tide_note="Some high tides leave no safe beach landing below launch.",
-         note="Site guide lists NNE–ENE; flown from the sand blow in a northerly on 1 Nov 2026, so N is included here."),
+         note="Site guide lists NNE–ENE; flown from the sand blow in a northerly on 1 Nov 2026, so N is included here.", radar="IDR083"),
     dict(id="teewah", name="Teewah Beach", sub="Coloured sands", region="Cooloola Coast", lat=-26.26887, lon=153.06666,
          height=30, mode="ridge", dirs=[[67.5, 112.5, "E"]], wind=[17, 20, 30, 35], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/teewah-beach/",
-         bom=("94570", "Tewantin"), tide=(-26.27, 153.10), tide_note="4WD beach access: check tide before driving."),
+         bom=("94570", "Tewantin"), tide=(-26.27, 153.10), tide_note="4WD beach access: check tide before driving.", radar="IDR083"),
     dict(id="sunrise", name="Sunrise Beach", sub="Noosa", region="Sunshine Coast", lat=-26.4152, lon=153.1102,
          height=23, mode="ridge", dirs=[[67.5, 112.5, "E"]], wind=[17, 20, 30, 35], rating="All levels (induction required)",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/sunrise/",
-         bom=("94569", "Sunshine Coast Airport"), tide=(-26.415, 153.14)),
+         bom=("94569", "Sunshine Coast Airport"), tide=(-26.415, 153.14), radar="IDR083"),
     dict(id="cartwright", name="Point Cartwright", sub="Buddina", region="Sunshine Coast", lat=-26.68041, lon=153.13835,
          height=22, mode="ridge", dirs=[[112.5, 157.5, "SSE–ESE"]], wind=[17, 20, 30, 35], rating="PG2 (controlled airspace)",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/carties/",
-         bom=("94569", "Sunshine Coast Airport")),
+         bom=("94569", "Sunshine Coast Airport"), note="Full SCFF members only (no visiting or temporary members). Controlled airspace: a Tower Contact Officer must be in place and you must check in every flight."),
     dict(id="moffats", name="Moffat Beach", sub="Caloundra headland", region="Sunshine Coast", lat=-26.790351, lon=153.144828,
          height=12, mode="ridge", dirs=[[0, 22.5, "N–NNE"]], wind=[19, 22, 30, 35], rating="PG4",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/moffats/",
-         bom=("94569", "Sunshine Coast Airport")),
+         bom=("94569", "Sunshine Coast Airport"), note="Cliff launch above rocks with a road directly behind. Self-assessment and a supervised first flight are required; check in every flight."),
     dict(id="kings", name="Kings Beach", sub="Caloundra", region="Sunshine Coast", lat=-26.802527, lon=153.14456,
          height=15, mode="ridge", dirs=[[157.5, 180, "S–SSE"]], wind=[19, 22, 30, 35], rating="Experienced pilots",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/kings-beach/",
-         bom=("94569", "Sunshine Coast Airport"), tide=(-26.805, 153.17), tide_note="Do not fly at high tide: no contingency landing."),
+         bom=("94569", "Sunshine Coast Airport"), tide=(-26.805, 153.17), tide_note="Do not fly at high tide: no contingency landing.", note="Low launch above rocks and surf; needs about 12 knots straight on. Check in every flight."),
     dict(id="buchys", name="Buchy's", sub="Gerrards Lookout", region="Sunshine Coast Hinterland", lat=-26.731103, lon=152.901987,
          height=375, mode="both", dirs=[[67.5, 112.5, "ENE–ESE"]], wind=[12, 16, 26, 32], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/buchys/",
@@ -73,48 +74,49 @@ SITES = [
     dict(id="towers", name="Towers", sub="Maleny plateau", region="Sunshine Coast Hinterland", lat=-26.778957, lon=152.915607,
          height=463, mode="thermal", dirs=[[0, 45, "N–NE"]], wind=[3, 6, 20, 28], rating="PG4",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/towers/",
-         bom=("95572", "Nambour")),
+         bom=("95572", "Nambour"), note="Tight, thermic launch and a tricky bombout with powerlines. Sensitive site: carpool from Hovards Rd. No top landing."),
     dict(id="widgee", name="Mt Widgee", sub="West of Gympie", region="Wide Bay", lat=-26.2476, lon=152.361,
          height=620, mode="both", dirs=[[90, 157.5, "E–SSE"]], wind=[12, 16, 26, 32], rating="PG2",
          club="Sunshine Coast Free Flyers", url="https://freeflyers.com.au/widgee/",
-         bom=("94566", "Gympie"), bom_alt=[("94549", "Kingaroy")], note="Bombout owner needs 24 hours notice."),
+         bom=("94566", "Gympie"), bom_alt=[("94549", "Kingaroy")], note="Bombout owner needs 24 hours notice.", radar="IDR083"),
     dict(id="tamborine", name="Mt Tamborine", sub="Tambo launch", region="Gold Coast Hinterland", lat=-27.95028, lon=153.18104,
          height=548, mode="thermal", dirs=[[225, 315, "SW–NW"]], wind=[3, 6, 20, 28], rating="PG4", cta=7500,
          club="Canungra Hang Gliding Club", url="https://siteguide.org.au/Sites/Details/Mt.%20Tamborine",
-         bom=("95575", "Beaudesert"), holfuy="1312"),
+         bom=("95575", "Beaudesert"), holfuy="1312", note="CHGC members, or visitors accompanied by a CHGC member. PG2 pilots need full safety-officer supervision and may not fly 10am–3pm (Sept–March) unless supervised by a CFI or SSO. UHF radio mandatory. Little room for error between launch and landing."),
     dict(id="beechmont", name="Beechmont", sub="Rosin's Lookout", region="Gold Coast Hinterland", lat=-28.117819, lon=153.201971,
          height=530, mode="both", dirs=[[45, 157.5, "NE–SSE"]], wind=[12, 16, 26, 32], rating="PG2",
          club="Canungra Hang Gliding Club", url="https://siteguide.org.au/Sites/Details/Beechmont%20-%20Rosin's%20Lookout",
-         bom=("95575", "Beaudesert"), holfuy="1342"),
+         bom=("95575", "Beaudesert"), holfuy="1342", note="CHGC members; visiting pilots need a site briefing from a CHGC safety officer or duty pilot first. UHF radio mandatory. The Big Shelf is the only official bombout."),
     dict(id="hinchies", name="Hinchcliffe's", sub="Flattop", region="Gold Coast Hinterland", lat=-28.07125, lon=153.14554,
          height=527, mode="thermal", dirs=[[90, 180, "E–S"]], wind=[3, 6, 20, 28], rating="PG3", cta=6500,
          club="Canungra Hang Gliding Club", url="https://siteguide.org.au/Sites/Details/Hinchcliffe's%20(Hart's,%20Flattop)",
-         bom=("95575", "Beaudesert")),
+         bom=("95575", "Beaudesert"), note="CHGC members, or visitors accompanied by a CHGC member. PG2 pilots require direct supervision."),
     dict(id="barney", name="Mt Barney", sub="Scenic Rim (launch unconfirmed)", region="Scenic Rim", lat=-28.2833, lon=152.7000,
-         height=1189, height_note="terrain height at the plotted point; launch unconfirmed", mode="thermal", dirs=[], wind=[0, 4, 20, 28], rating="Not in SAFA site guide",
-         club=None, url="https://en.wikipedia.org/wiki/Mount_Barney_(Queensland)",
-         bom=("95575", "Beaudesert"), note="Not a listed SAFA site; launch directions unknown, so wind direction is not scored."),
+         height=1189, height_note="terrain height at the plotted point; launch unconfirmed", mode="thermal", dirs=[], wind=[0, 4, 20, 28], rating="Not a recognised SAFA site",
+         club=None, url="https://siteguide.org.au/",
+         bom=("95575", "Beaudesert"), note="Area forecast only. Mt Barney is not a listed SAFA flying site: there is no recognised launch, site rules or landing area, and it is inside a national park. Launch direction is unknown, so wind direction is not scored. Do not treat a good score as clearance to fly."),
     dict(id="killarney", name="Killarney", sub="Four launches", region="Darling Downs", lat=-28.22152, lon=152.35104,
          height=1078, height_note="N launch, from terrain model", mode="both", dirs=[[337.5, 45, "N launch (NNW–NE)"], [67.5, 112.5, "E launch"], [112.5, 157.5, "SE launch (ESE–SSE)"], [247.5, 292.5, "W launch (WSW–WNW)"]],
          wind=[12, 16, 28, 34], rating="N PG2 · SE PG3 · E/W PG4",
-         club=None, url="https://siteguide.org.au/Sites/Details/Killarney%20-%20N%20Launch",
-         bom=("94555", "Warwick")),
+         club=None, url="https://siteguide.org.au/Sites/Details/Killarney",
+         bom=("94555", "Warwick"), live=("FreeFlight Wx: Killarney SE", "https://www.freeflightwx.com/killarney/"),
+         note="All launches and landings are on private land run by Wicked Wings: contact the club before visiting."),
     dict(id="wilsons", name="Wilson's", sub="Toowoomba Range", region="Darling Downs", lat=-27.69168, lon=151.99881,
          height=718, mode="thermal", dirs=[[22.5, 67.5, "NE"]], wind=[3, 6, 20, 28], rating="PG4",
          club="Wicked Wings", url="https://siteguide.org.au/Sites/Details/Wilson's",
-         bom=("95551", "Toowoomba")),
+         bom=("95551", "Toowoomba"), live=("FreeFlight Wx: Wilson's", "https://www.freeflightwx.com/wilsons/")),
     dict(id="mamacreek", name="Ma Ma Creek", sub="Lockyer Valley", region="Darling Downs", lat=-27.63696, lon=152.14366,
          height=366, height_note="from terrain model", mode="both", dirs=[[22.5, 112.5, "NE–E"]], wind=[12, 16, 26, 30], rating="PG2",
          club="Wicked Wings", url="https://siteguide.org.au/Sites/Details/Ma%20Ma%20Creek",
-         bom=("94562", "Gatton"), note="Military airspace limits on weekdays; contact Wicked Wings first."),
+         bom=("94562", "Gatton"), note="Military airspace limits on weekdays; contact Wicked Wings first.", live=("FreeFlight Wx: Ma Ma", "https://www.freeflightwx.com/mama/")),
 ]
 
 # New South Wales. Sources: SAFA National Site Guide and club pages. Wind ranges are starting estimates (km/h).
 NSW_SITES = [
     dict(id="stanwell", name="Stanwell Park", sub="Bald Hill", region="Sydney & Illawarra", lat=-34.2240, lon=150.9971,
-         height=180, mode="ridge", dirs=[[90, 180, "E–S"]], wind=[10, 14, 26, 30], rating="PG4",
+         height=180, mode="ridge", dirs=[[90, 202.5, "E–SSW"]], wind=[10, 14, 26, 30], rating="PG4",
          club="FlyStanwell (Stanwell Park HG & PG Club)", url="https://siteguide.org.au/Sites/Details/Stanwell%20Park%20-%20Bald%20Hill",
-         bom=("94749", "Bellambi"), radar="IDR033", tide=(-34.226, 151.03),
+         bom=("94749", "Bellambi"), radar="IDR033", tide=(-34.226, 151.03), live=("FreeFlight Wx: Stanwell Park", "https://www.freeflightwx.com/stanwell/"),
          note="Club membership needed (3-day membership available). Landing markers must be set out before anyone flies."),
     dict(id="longreef", name="Long Reef", sub="Northern Beaches", region="Sydney & Illawarra", lat=-33.7418, lon=151.3140,
          height=30, mode="ridge", dirs=[[22.5, 67.5, "NE face"], [135, 180, "SE face (S–SE)"]], wind=[15, 18, 30, 35],
@@ -163,7 +165,7 @@ NSW_SITES = [
          height=910, mode="both", dirs=[[67.5, 112.5, "E"]], wind=[12, 16, 26, 32], rating="PG2",
          club="ACT Hang Gliding & Paragliding Association", url="https://siteguide.org.au/Sites/Details/Lake%20George%20(Collector)",
          bom=("95716", "Goulburn Airport"), radar="IDR403",
-         note="Private land: check in with the QR codes at the top and bottom gates."),
+         note="Private land: check in with the QR codes at the top and bottom gates.", live=("FreeFlight Wx: Lake George", "https://www.freeflightwx.com/acthpa/lakegeorge/")),
 ]
 for _s in NSW_SITES:
     _s["state"] = "nsw"
@@ -546,7 +548,7 @@ def build_state(state, tz, obs_page, sites, obs, ok_models):
         o = dict(id=s["id"], name=s["name"], sub=s["sub"], region=s["region"], lat=s["lat"], lon=s["lon"],
                  height=s["height"], height_note=s.get("height_note"), band=(BAND_TOP if (s.get("height") or 0) >= INLAND_MIN else None) if "wsl" in cons else None,
                  wl=("band" if (s.get("height") or 0) >= INLAND_MIN else "coast") if "wsl" in cons else None, elev=elev, mode=s["mode"], dirs=s["dirs"], wind=s["wind"], rating=s["rating"],
-                 club=s["club"], url=s["url"], cta=s.get("cta"), note=s.get("note"), holfuy=s.get("holfuy"),
+                 club=s["club"], url=s["url"], cta=s.get("cta"), note=s.get("note"), holfuy=s.get("holfuy"), live=s.get("live"),
                  state=state, tz=tz, radar=s.get("radar"),
                  bom=pick_station(s, obs_page, obs),
                  tide=tides.get(s["id"]), tide_note=s.get("tide_note"), t=times_out, c=cons, m=mod)
@@ -556,6 +558,15 @@ def build_state(state, tz, obs_page, sites, obs, ok_models):
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "forecast.json"
+    # The workflow tries hourly because GitHub drops many scheduled runs; skip when data is still fresh.
+    if not os.environ.get("SKYWINDOW_FORCE") and os.path.exists(out):
+        try:
+            age = (datetime.now(AEST) - datetime.fromisoformat(json.load(open(out))["generated"])).total_seconds() / 3600
+            if 0 <= age < MIN_REFRESH_H:
+                print(f"skip: forecast is {age:.1f} h old (refreshes when over {MIN_REFRESH_H} h)")
+                sys.exit(0)
+        except Exception as e:
+            print("could not read existing forecast, refreshing:", e)
     data = build()
     fatal, warn = quality_check(data)
     data["qa"] = dict(warnings=warn)
