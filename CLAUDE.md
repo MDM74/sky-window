@@ -10,11 +10,12 @@ in plain language, and keep the public page free of internal notes or "ask Claud
 - `refresh.py` (Python stdlib only) fetches data and writes `forecast.json`. Scoring is NOT done here.
 - `index.html` is the whole site: one self-contained page (inline CSS/JS, Google Fonts only) that
   reads `forecast.json` and does all scoring in the browser, so thresholds can change without a refresh.
-- `.github/workflows/refresh.yml` is scheduled hourly (cron `17 * * * *` UTC) because GitHub drops many
-  scheduled runs. `refresh.py` skips itself when the published forecast is under `MIN_REFRESH_H` (2.4 h)
-  old, so real refreshes happen about every 3 hours. Manual runs set `SKYWINDOW_FORCE=1` and always
-  refresh: Actions tab, or `gh api -X POST repos/MDM74/sky-window/actions/workflows/refresh.yml/dispatches -f ref=main`.
-  Push retries 3 times.
+- `.github/workflows/refresh.yml` chains itself: each run refreshes, waits ~2 h 45 min, then dispatches the
+  next run (GitHub dropped ~90% of scheduled runs in Nov 2026, leaving data 6–12 h old). The hourly cron is
+  only a safety net that restarts the chain; the concurrency group keeps one run active and one waiting.
+  Dispatched runs set `SKYWINDOW_FORCE=1`; cron runs skip when data is under `MIN_REFRESH_H` (2.4 h).
+  Manual run: Actions tab, or `gh api -X POST repos/MDM74/sky-window/actions/workflows/refresh.yml/dispatches -f ref=main`.
+  The page flags data older than 4.5 h.
 - GitHub Pages serves the `main` branch root. Repo must stay public (Pages is free only for public repos).
 - `refresh.py` runs `quality_check()` before writing. Fatal problems (fewer than 2 models, >10% missing
   hours, impossible values) exit non-zero so the previous forecast stays live. Warnings go into
@@ -78,7 +79,8 @@ club, BOM station, optional tide point, radar, CTA ceiling and notes. Mt Barney 
 All page links and all 27 sites were re-checked against the SAFA site guide (KML export at
 siteguide.org.au/Kml/Open and /Kml/Closed) and club pages; all sites were open. Each site can carry
 `live` (FreeFlight Wx launch station link), `holfuy`, `radar` and `note` (access/safety rules shown as
-"Site notes"). Repeat this audit every few months: sites close and rules change.
+"Site notes"). Repeat this audit every few months: sites close and rules change. Re-checked 28 Nov 2026: all links fine,
+all sites still open; Mt Borah now uses Tamworth Airport (Barraba only reports at 9 am).
 
 ## Open items
 

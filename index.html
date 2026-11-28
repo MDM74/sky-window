@@ -428,7 +428,7 @@ function renderStatus(){
   const ageH=(Date.now()-g.getTime())/36e5;
   const when=g.toLocaleString("en-AU",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"Australia/Brisbane"});
   document.getElementById("status").innerHTML =
-    `<span>Updated ${esc(when)} AEST${ageH>7?` <span class="flag">(${Math.round(ageH)} h old)</span>`:""}${S.state==="nsw"?` · NSW times in ${esc(new Date().toLocaleTimeString("en-AU",{timeZone:"Australia/Sydney",timeZoneName:"short"}).split(" ").pop())}`:""}</span>`+
+    `<span>Updated ${esc(when)} AEST${ageH>4.5?` <span class="flag">(${Math.round(ageH)} h old)</span>`:""}${S.state==="nsw"?` · NSW times in ${esc(new Date().toLocaleTimeString("en-AU",{timeZone:"Australia/Sydney",timeZoneName:"short"}).split(" ").pop())}`:""}</span>`+
     S.data.models.map(m=>`<span class="chip" title="${esc(m.id)}"><span class="dot${m.ok?"":" off"}"></span>${esc(m.label)}</span>`).join("")+
     (S.data.qa&&S.data.qa.warnings&&S.data.qa.warnings.length?`<span class="chip" title="${esc(S.data.qa.warnings.join("\n"))}"><span class="dot off"></span>${S.data.qa.warnings.length} data note${S.data.qa.warnings.length>1?"s":""}</span>`:"");
 }
@@ -690,7 +690,12 @@ document.getElementById("hourRange").addEventListener("input",e=>{
 const DAYFMT={weekday:"long",day:"numeric",month:"short",timeZone:"Australia/Brisbane"};
 function weekendDays(){
   const out=[];
+  // after 4 pm, today's flying is over, so the weekend card moves on to the next day
+  const st=S.state==="nsw"?"Australia/Sydney":"Australia/Brisbane";
+  const today=new Date().toLocaleDateString("en-CA",{timeZone:st});
+  const hourNow=+new Date().toLocaleString("en-AU",{hour:"numeric",hour12:false,timeZone:st});
   for(const d of dates()){
+    if(d<today || (d===today && hourNow>=16)) continue;
     const wd=new Date(d+"T12:00:00+10:00").getUTCDay();
     if(wd===6||wd===0){ out.push(d); if(wd===0) break; }
     else if(out.length) break;

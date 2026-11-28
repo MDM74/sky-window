@@ -1,25 +1,32 @@
 name: Refresh forecast
+# GitHub drops most scheduled runs on this repo (only ~3 of 24 hourly runs fired per day in Nov 2026),
+# so each run queues the next one itself: refresh, wait ~2 h 45 min, then dispatch a new run.
+# The hourly schedule is only a safety net that restarts the chain if it ever breaks.
+# Only one run can be active and one waiting (concurrency group), so chains never multiply.
 on:
   schedule:
-    # Tried hourly because GitHub skips many scheduled runs; refresh.py skips itself when data is under ~2.4 h old.
     - cron: "17 * * * *"
   workflow_dispatch: {}
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: refresh
   cancel-in-progress: false
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 200
     steps:
       - uses: actions/checkout@v5
       - name: Fetch forecasts
+        id: fetch
+        timeout-minutes: 15
         env:
           SKYWINDOW_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
         run: python3 refresh.py forecast.json
       - name: Commit new data
+        timeout-minutes: 5
         run: |
           git config user.name "sky-window-bot"
           git config user.email "actions@users.noreply.github.com"
@@ -32,3 +39,11 @@ jobs:
             echo "push failed (attempt $i), retrying"; sleep $((i * 20))
           done
           exit 1
+      - name: Wait, then queue the next refresh
+        if: always()
+        timeout-minutes: 175
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 9900
+          gh workflow run refresh.yml --repo "${{ github.repository }}" --ref main
